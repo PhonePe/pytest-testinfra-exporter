@@ -1,0 +1,35 @@
+error_maps:
+  - match_type: exact
+    target_logs:
+      - "'bool' object is not subscriptable"
+    defect:
+      name: "Salt Issues"
+
+
+  - match_type: exact
+    target_logs:
+      - "Access denied for user"
+    defect:
+      name: "DB Access Issues"
+      
+
+  - match_type: regex
+    target_logs:
+      - "Cannot get daemontools status.*"
+    defect:
+      name: "Monitoring Missing"
+      
+
+  - match_type: regex
+    target_logs:
+      - "host.network.check_connectivity.*"
+    defect:
+      name: "Connectivity Missing"
+      
+
+  - match_type: exact
+    target_logs:
+      - "/var/local/endec.py\", line 2, in \nModuleNotFoundError: No module named 'salt"
+    defect:
+      name: "Endec Error"
+      

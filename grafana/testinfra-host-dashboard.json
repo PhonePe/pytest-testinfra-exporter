@@ -1,0 +1,467 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Back to Host Overview",
+      "type": "link",
+      "url": "/d/testinfra-overview/testinfra-host-overview?var-ds=${ds}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "displayMode": "auto",
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "canonical_nodeid"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open test logs",
+                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}&var-test_nodeid=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "test_name"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "fail": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "Fail"
+                      },
+                      "pass": {
+                        "color": "green",
+                        "index": 1,
+                        "text": "Pass"
+                      },
+                      "skip": {
+                        "color": "yellow",
+                        "index": 2,
+                        "text": "Skip"
+                      },
+                      "skipped": {
+                        "color": "yellow",
+                        "index": 3,
+                        "text": "Skipped"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "cellHeight": "sm",
+        "columnFilter": true,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "finished_at"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  tr.finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\nORDER BY tr.finished_at DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Tests for Host ${host} (Click test to drill down)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END) AS pass,\n  SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END) AS fail,\n  SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END) AS skipped\nFROM test_results tr\nWHERE tr.run_id = '${run_id}';",
+          "refId": "A"
+        }
+      ],
+      "title": "Status Distribution for Run ${run_id}",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END) AS pass,\n  SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END) AS fail,\n  SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END) AS skipped\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}';",
+          "refId": "A"
+        }
+      ],
+      "title": "Status Distribution for Run ${run_id} and Host ${host}",
+      "type": "piechart"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "testinfra",
+    "mariadb",
+    "drilldown"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "mysql",
+        "refresh": 1,
+        "label": "MySQL/MariaDB Datasource",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "TestInfra MariaDB",
+          "value": "testinfra-mariadb"
+        }
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT h.host_name FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE t.started_at BETWEEN FROM_UNIXTIME(${__from}/1000) AND FROM_UNIXTIME(${__to}/1000) ORDER BY h.host_name",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Host",
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": "SELECT DISTINCT h.host_name FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE t.started_at BETWEEN FROM_UNIXTIME(${__from}/1000) AND FROM_UNIXTIME(${__to}/1000) ORDER BY h.host_name",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT tr.run_id AS __value, DATE_FORMAT(CONVERT_TZ(t.started_at, '+00:00', '+05:30'), '%Y-%m-%d %H:%i:%s') AS __text FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE h.host_name = '${host}' AND t.started_at BETWEEN FROM_UNIXTIME(${__from}/1000) AND FROM_UNIXTIME(${__to}/1000) ORDER BY t.started_at DESC",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Run",
+        "multi": false,
+        "name": "run_id",
+        "options": [],
+        "query": "SELECT DISTINCT tr.run_id AS __value, DATE_FORMAT(CONVERT_TZ(t.started_at, '+00:00', '+05:30'), '%Y-%m-%d %H:%i:%s') AS __text FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE h.host_name = '${host}' AND t.started_at BETWEEN FROM_UNIXTIME(${__from}/1000) AND FROM_UNIXTIME(${__to}/1000) ORDER BY t.started_at DESC",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "TestInfra - Host Details",
+  "uid": "testinfra-host-details",
+  "version": 1,
+  "weekStart": ""
+}

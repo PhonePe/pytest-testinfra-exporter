@@ -1,0 +1,343 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host_name"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open host tests",
+                    "url": "/d/testinfra-host-details/testinfra-host-details?var-ds=${ds}&var-host=${__value.raw}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "cellHeight": "sm",
+        "columnFilter": true,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "host_name"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "dataset": "${mariadb_database}",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  h.host_name,\n  COALESCE(SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END), 0) AS pass_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS fail_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END), 0) AS skipped_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'error' THEN 1 ELSE 0 END), 0) AS error_count,\n  COALESCE(COUNT(tr.id), 0) AS total_tests\nFROM hosts h\nLEFT JOIN test_results tr ON tr.host_id = h.id\nLEFT JOIN test_runs r ON r.run_id = tr.run_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00')\n  AND (\n    '${cluster:csv}' = ''\n    OR '${cluster:csv}' = '__all'\n    OR EXISTS (\n      SELECT 1\n      FROM test_result_markers trm\n      WHERE trm.test_result_id = tr.id\n        AND trm.marker_name = 'cluster'\n        AND trm.marker_value = '${cluster:csv}'\n    )\n  )\nGROUP BY h.id, h.host_name\nORDER BY h.host_name;",
+          "refId": "A"
+        }
+      ],
+      "title": "Host Status (All Runs in Selected Time Range)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 90,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "pass"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "fail"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "skipped"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.9,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "never",
+        "stacking": "normal",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "host_name",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  h.host_name,\n  COALESCE(SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END), 0) AS pass_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS fail_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END), 0) AS skipped_count\nFROM hosts h\nLEFT JOIN test_results tr ON tr.host_id = h.id\nLEFT JOIN test_runs r ON r.run_id = tr.run_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00')\n  AND ('${bar_hosts:csv}' = '__all' OR FIND_IN_SET(h.host_name, '${bar_hosts:csv}') > 0)\n  AND (\n    '${cluster:csv}' = ''\n    OR '${cluster:csv}' = '__all'\n    OR EXISTS (\n      SELECT 1\n      FROM test_result_markers trm\n      WHERE trm.test_result_id = tr.id\n        AND trm.marker_name = 'cluster'\n        AND trm.marker_value = '${cluster:csv}'\n    )\n  )\nGROUP BY h.id, h.host_name\nORDER BY h.host_name;",
+          "refId": "A"
+        }
+      ],
+      "title": "Host Status Bars (All Runs in Selected Time Range)",
+      "type": "barchart"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "testinfra",
+    "mariadb",
+    "drilldown"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "mysql",
+        "refresh": 1,
+        "label": "MySQL/MariaDB Datasource",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "TestInfra MariaDB",
+          "value": "testinfra-mariadb"
+        }
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT trm.marker_value AS __value, trm.marker_value AS __text FROM test_result_markers trm JOIN test_results tr ON tr.id = trm.test_result_id JOIN test_runs r ON r.run_id = tr.run_id WHERE trm.marker_name = 'cluster' AND trm.marker_value IS NOT NULL AND trm.marker_value <> '' AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00') ORDER BY trm.marker_value",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "__all",
+        "label": "Cluster",
+        "multi": false,
+        "name": "cluster",
+        "options": [],
+        "query": "SELECT DISTINCT trm.marker_value AS __value, trm.marker_value AS __text FROM test_result_markers trm JOIN test_results tr ON tr.id = trm.test_result_id JOIN test_runs r ON r.run_id = tr.run_id WHERE trm.marker_name = 'cluster' AND trm.marker_value IS NOT NULL AND trm.marker_value <> '' AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00') ORDER BY trm.marker_value",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "__all"
+          ]
+        }
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT h.host_name AS __value, h.host_name AS __text FROM hosts h JOIN test_results tr ON tr.host_id = h.id JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00') AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS ( SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}' )) ORDER BY h.host_name",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "__all",
+        "label": "Bar Graph Hosts",
+        "multi": true,
+        "name": "bar_hosts",
+        "options": [],
+        "query": "SELECT DISTINCT h.host_name AS __value, h.host_name AS __text FROM hosts h JOIN test_results tr ON tr.host_id = h.id JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00') AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS ( SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}' )) ORDER BY h.host_name",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "__all"
+          ]
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "TestInfra - Host Overview",
+  "uid": "testinfra-overview",
+  "version": 2,
+  "weekStart": ""
+}
