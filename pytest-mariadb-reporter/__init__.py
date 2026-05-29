@@ -159,12 +159,6 @@ def pytest_addoption(parser):
     group.addoption("--mariadb-password", action="store", default="password")
     group.addoption("--mariadb-database", action="store", default="testinfra_reports")
     group.addoption(
-        "--mariadb-trigger-source",
-        action="store",
-        default="local",
-        help="Trigger source for test run metadata (e.g. local/jenkins/cron).",
-    )
-    group.addoption(
         "--mariadb-suite-version",
         action="store",
         default=None,
@@ -389,6 +383,11 @@ class MariaDBReporter:
 
     def _determine_status(self, setup_report, call_report, teardown_report):
         if call_report is not None:
+            if hasattr(call_report, "wasxfail"):
+                if call_report.skipped:
+                    return "xfail"
+                if call_report.passed or call_report.failed:
+                    return "xpass"
             if call_report.passed:
                 if teardown_report is not None and teardown_report.failed:
                     return "error"
@@ -443,6 +442,9 @@ class MariaDBReporter:
             CREATE TABLE IF NOT EXISTS hosts (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
               host_name VARCHAR(255) NOT NULL,
+              is_active BOOLEAN NOT NULL DEFAULT TRUE,
+              first_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+              last_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               PRIMARY KEY (id),
               UNIQUE KEY uq_hosts_host_name (host_name)
@@ -451,9 +453,9 @@ class MariaDBReporter:
             """
             CREATE TABLE IF NOT EXISTS tests (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-              canonical_nodeid VARCHAR(1024) NOT NULL,
+              canonical_nodeid VARCHAR(255) NOT NULL,
               test_name VARCHAR(255) NOT NULL,
-              test_module VARCHAR(1024) NULL,
+              test_suite VARCHAR(1024) NULL,
               test_class VARCHAR(255) NULL,
               created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               PRIMARY KEY (id),
@@ -483,14 +485,14 @@ class MariaDBReporter:
               run_id CHAR(36) NOT NULL,
               host_id BIGINT UNSIGNED NOT NULL,
               test_id BIGINT UNSIGNED NOT NULL,
-              status ENUM('pass', 'fail', 'skipped', 'error') NOT NULL,
+              status ENUM('pass', 'fail', 'skipped', 'error', 'xfail', 'xpass') NOT NULL,
                             failure_tag VARCHAR(255) NULL,
               duration_ms INT UNSIGNED NOT NULL DEFAULT 0,
               started_at DATETIME(6) NULL,
               finished_at DATETIME(6) NULL,
               error_type VARCHAR(128) NULL,
               error_message TEXT NULL,
-              longrepr LONGTEXT NULL,
+              full_trace LONGTEXT NULL,
               captured_log LONGTEXT NULL,
               captured_stdout LONGTEXT NULL,
               captured_stderr LONGTEXT NULL,
@@ -548,7 +550,7 @@ class MariaDBReporter:
                 """,
                 (
                     self._run_id,
-                    self.config.getoption("--mariadb-trigger-source"),
+                    socket.getfqdn(),
                     self.config.getoption("--mariadb-suite-version"),
                     self._run_started_at,
                 ),
@@ -573,7 +575,7 @@ class MariaDBReporter:
             self._metadata_by_nodeid[nodeid] = {
                 "canonical_nodeid": _canonical_nodeid(nodeid),
                 "test_name": _normalized_test_name(item, nodeid),
-                "test_module": item.location[0] if hasattr(item, "location") else None,
+                "test_suite": item.location[0] if hasattr(item, "location") else None,
                 "test_class": item.cls.__name__ if getattr(item, "cls", None) else None,
                 "host_name": self._resolve_host_name(item),
                 "markers": _extract_item_markers(item),
@@ -622,7 +624,7 @@ class MariaDBReporter:
 
         error_type = None
         error_message = None
-        longrepr_text = self._combined_longrepr(phase_reports)
+        full_trace_text = self._combined_longrepr(phase_reports)
         captured_log_text = (
             "\\n\\n".join(merged_sections["captured_log"])
             if merged_sections["captured_log"]
@@ -656,7 +658,7 @@ class MariaDBReporter:
                 status,
                 [
                     error_message,
-                    longrepr_text,
+                    full_trace_text,
                     captured_log_text,
                     captured_stdout_text,
                     captured_stderr_text,
@@ -670,7 +672,7 @@ class MariaDBReporter:
                 "test_name": metadata.get(
                     "test_name", _canonical_nodeid(str(nodeid).rsplit("::", 1)[-1])
                 ),
-                "test_module": metadata.get("test_module"),
+                "test_suite": metadata.get("test_suite"),
                 "test_class": metadata.get("test_class"),
                 "host_name": metadata.get("host_name") or socket.gethostname(),
                 "status": status,
@@ -679,7 +681,7 @@ class MariaDBReporter:
                 "run_at": run_at,
                 "error_type": error_type,
                 "error_message": error_message,
-                "longrepr": longrepr_text,
+                "full_trace": full_trace_text,
                 "captured_log": captured_log_text,
                 "captured_stdout": captured_stdout_text,
                 "captured_stderr": captured_stderr_text,
@@ -688,31 +690,32 @@ class MariaDBReporter:
         )
 
     def _upsert_host(self, cursor, host_name):
+        now = _utcnow_naive()
         cursor.execute(
             """
-            INSERT INTO hosts (host_name)
-            VALUES (%s)
-            ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), host_name = VALUES(host_name)
+            INSERT INTO hosts (host_name, first_seen, last_seen)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), last_seen = VALUES(last_seen)
             """,
-            (host_name,),
+            (host_name, now, now),
         )
         return int(cursor.lastrowid)
 
     def _upsert_test(self, cursor, row):
         cursor.execute(
             """
-            INSERT INTO tests (canonical_nodeid, test_name, test_module, test_class)
+            INSERT INTO tests (canonical_nodeid, test_name, test_suite, test_class)
             VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
               id = LAST_INSERT_ID(id),
               test_name = VALUES(test_name),
-              test_module = VALUES(test_module),
+              test_suite = VALUES(test_suite),
               test_class = VALUES(test_class)
             """,
             (
                 row["canonical_nodeid"],
                 row["test_name"],
-                row["test_module"],
+                row["test_suite"],
                 row["test_class"],
             ),
         )
@@ -732,7 +735,7 @@ class MariaDBReporter:
               finished_at,
               error_type,
               error_message,
-              longrepr,
+              full_trace,
               captured_log,
               captured_stdout,
               captured_stderr
@@ -746,7 +749,7 @@ class MariaDBReporter:
               finished_at = VALUES(finished_at),
               error_type = VALUES(error_type),
               error_message = VALUES(error_message),
-              longrepr = VALUES(longrepr),
+              full_trace = VALUES(full_trace),
               captured_log = VALUES(captured_log),
               captured_stdout = VALUES(captured_stdout),
               captured_stderr = VALUES(captured_stderr)
@@ -762,7 +765,7 @@ class MariaDBReporter:
                 row["run_at"],
                 row["error_type"],
                 row["error_message"],
-                row["longrepr"],
+                row["full_trace"],
                 row["captured_log"],
                 row["captured_stdout"],
                 row["captured_stderr"],

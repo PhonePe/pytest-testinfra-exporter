@@ -9,6 +9,9 @@ SET FOREIGN_KEY_CHECKS = 1;
 CREATE TABLE IF NOT EXISTS hosts (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   host_name VARCHAR(255) NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  first_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  last_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uq_hosts_host_name (host_name)
@@ -16,9 +19,9 @@ CREATE TABLE IF NOT EXISTS hosts (
 
 CREATE TABLE IF NOT EXISTS tests (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  canonical_nodeid VARCHAR(1024) NOT NULL,
+  canonical_nodeid VARCHAR(255) NOT NULL,
   test_name VARCHAR(255) NOT NULL,
-  test_module VARCHAR(1024) NULL,
+  test_suite VARCHAR(1024) NULL,
   test_class VARCHAR(255) NULL,
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
@@ -46,14 +49,14 @@ CREATE TABLE IF NOT EXISTS test_results (
   run_id CHAR(36) NOT NULL,
   host_id BIGINT UNSIGNED NOT NULL,
   test_id BIGINT UNSIGNED NOT NULL,
-  status ENUM('pass', 'fail', 'skipped', 'error') NOT NULL,
+  status ENUM('pass', 'fail', 'skipped', 'error', 'xfail', 'xpass') NOT NULL,
   failure_tag VARCHAR(255) NULL,
   duration_ms INT UNSIGNED NOT NULL DEFAULT 0,
   started_at DATETIME(6) NULL,
   finished_at DATETIME(6) NULL,
   error_type VARCHAR(128) NULL,
   error_message TEXT NULL,
-  longrepr LONGTEXT NULL,
+  full_trace LONGTEXT NULL,
   captured_log LONGTEXT NULL,
   captured_stdout LONGTEXT NULL,
   captured_stderr LONGTEXT NULL,
