@@ -12,7 +12,6 @@ CREATE TABLE IF NOT EXISTS hosts (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   first_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   last_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uq_hosts_host_name (host_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -23,7 +22,6 @@ CREATE TABLE IF NOT EXISTS tests (
   test_name VARCHAR(255) NOT NULL,
   test_suite VARCHAR(1024) NULL,
   test_class VARCHAR(255) NULL,
-  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uq_tests_canonical_nodeid (canonical_nodeid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -39,7 +37,6 @@ CREATE TABLE IF NOT EXISTS test_runs (
   failed_count INT NOT NULL DEFAULT 0,
   skipped_count INT NOT NULL DEFAULT 0,
   errored_count INT NOT NULL DEFAULT 0,
-  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (run_id),
   KEY idx_test_runs_started (started_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -60,7 +57,6 @@ CREATE TABLE IF NOT EXISTS test_results (
   captured_log LONGTEXT NULL,
   captured_stdout LONGTEXT NULL,
   captured_stderr LONGTEXT NULL,
-  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uq_test_results_run_host_test (run_id, host_id, test_id),
   KEY idx_test_results_run_host (run_id, host_id),
@@ -79,7 +75,6 @@ CREATE TABLE IF NOT EXISTS test_result_markers (
   test_result_id BIGINT UNSIGNED NOT NULL,
   marker_name VARCHAR(128) NOT NULL,
   marker_value VARCHAR(512) NULL,
-  created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (id),
   UNIQUE KEY uq_result_marker_name_value (test_result_id, marker_name, marker_value),
   KEY idx_result_markers_name_value (marker_name, marker_value),

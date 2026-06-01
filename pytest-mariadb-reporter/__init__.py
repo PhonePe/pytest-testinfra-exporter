@@ -9,15 +9,20 @@ import warnings
 import pytest
 
 
-def _utcnow_naive():
-    # Store UTC timestamps as naive DATETIME(6) for MariaDB compatibility.
-    return dt.datetime.utcnow().replace(tzinfo=None)
+IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 
 
-def _epoch_to_utc_naive(value):
+def _istnow_naive():
+    # Store IST timestamps as naive DATETIME(6) for MariaDB compatibility.
+    return dt.datetime.now(IST).replace(tzinfo=None)
+
+
+def _epoch_to_ist_naive(value):
     if value is None:
         return None
-    return dt.datetime.utcfromtimestamp(value).replace(tzinfo=None)
+    return dt.datetime.fromtimestamp(value, tz=dt.timezone.utc).astimezone(IST).replace(
+        tzinfo=None
+    )
 
 
 def _canonical_nodeid(nodeid):
@@ -311,7 +316,7 @@ class MariaDBReporter:
         self._connection = None
         self._disabled_reason = None
         self._run_id = str(uuid.uuid4())
-        self._run_started_at = _utcnow_naive()
+        self._run_started_at = _istnow_naive()
         self._reports_by_nodeid = {}
         self._metadata_by_nodeid = {}
         self._result_rows = []
@@ -445,7 +450,6 @@ class MariaDBReporter:
               is_active BOOLEAN NOT NULL DEFAULT TRUE,
               first_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               last_seen DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
-              created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               PRIMARY KEY (id),
               UNIQUE KEY uq_hosts_host_name (host_name)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -457,7 +461,6 @@ class MariaDBReporter:
               test_name VARCHAR(255) NOT NULL,
               test_suite VARCHAR(1024) NULL,
               test_class VARCHAR(255) NULL,
-              created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               PRIMARY KEY (id),
               UNIQUE KEY uq_tests_canonical_nodeid (canonical_nodeid)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -474,7 +477,6 @@ class MariaDBReporter:
               failed_count INT NOT NULL DEFAULT 0,
               skipped_count INT NOT NULL DEFAULT 0,
               errored_count INT NOT NULL DEFAULT 0,
-              created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               PRIMARY KEY (run_id),
               KEY idx_test_runs_started (started_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -496,7 +498,6 @@ class MariaDBReporter:
               captured_log LONGTEXT NULL,
               captured_stdout LONGTEXT NULL,
               captured_stderr LONGTEXT NULL,
-              created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
               PRIMARY KEY (id),
               UNIQUE KEY uq_test_results_run_host_test (run_id, host_id, test_id),
               KEY idx_test_results_run_host (run_id, host_id),
@@ -516,7 +517,6 @@ class MariaDBReporter:
                             test_result_id BIGINT UNSIGNED NOT NULL,
                             marker_name VARCHAR(128) NOT NULL,
                             marker_value VARCHAR(512) NULL,
-                            created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                             PRIMARY KEY (id),
                             UNIQUE KEY uq_result_marker_name_value (test_result_id, marker_name, marker_value),
                             KEY idx_result_markers_name_value (marker_name, marker_value),
@@ -545,8 +545,8 @@ class MariaDBReporter:
                   run_id,
                   trigger_source,
                   suite_version,
-                  started_at
-                ) VALUES (%s, %s, %s, %s)
+                                    started_at
+                                ) VALUES (%s, %s, %s, %s)
                 """,
                 (
                     self._run_id,
@@ -602,10 +602,16 @@ class MariaDBReporter:
         stops = [getattr(r, "stop", None) for r in phase_reports]
         starts = [getattr(r, "start", None) for r in phase_reports]
 
-        # Keep one per-test timestamp representing when execution completed.
-        run_at = _epoch_to_utc_naive(max(s for s in stops if s is not None)) if any(s is not None for s in stops) else None
-        if run_at is None and any(s is not None for s in starts):
-            run_at = _epoch_to_utc_naive(min(s for s in starts if s is not None))
+        started_at = (
+            _epoch_to_ist_naive(min(s for s in starts if s is not None))
+            if any(s is not None for s in starts)
+            else None
+        )
+        finished_at = (
+            _epoch_to_ist_naive(max(s for s in stops if s is not None))
+            if any(s is not None for s in stops)
+            else started_at
+        )
 
         duration_ms = int(round(sum(float(getattr(r, "duration", 0.0) or 0.0) for r in phase_reports) * 1000))
 
@@ -678,7 +684,8 @@ class MariaDBReporter:
                 "status": status,
                 "failure_tag": failure_tag,
                 "duration_ms": duration_ms,
-                "run_at": run_at,
+                "started_at": started_at,
+                "finished_at": finished_at,
                 "error_type": error_type,
                 "error_message": error_message,
                 "full_trace": full_trace_text,
@@ -690,7 +697,7 @@ class MariaDBReporter:
         )
 
     def _upsert_host(self, cursor, host_name):
-        now = _utcnow_naive()
+        now = _istnow_naive()
         cursor.execute(
             """
             INSERT INTO hosts (host_name, first_seen, last_seen)
@@ -745,7 +752,7 @@ class MariaDBReporter:
               status = VALUES(status),
                             failure_tag = VALUES(failure_tag),
               duration_ms = VALUES(duration_ms),
-                            started_at = NULL,
+                            started_at = VALUES(started_at),
               finished_at = VALUES(finished_at),
               error_type = VALUES(error_type),
               error_message = VALUES(error_message),
@@ -761,8 +768,8 @@ class MariaDBReporter:
                 row["status"],
                 row["failure_tag"],
                 row["duration_ms"],
-                None,
-                row["run_at"],
+                row["started_at"],
+                row["finished_at"],
                 row["error_type"],
                 row["error_message"],
                 row["full_trace"],
@@ -791,7 +798,13 @@ class MariaDBReporter:
             marker_value = _normalize_marker_value(marker.get("value"))
             if marker_name is None:
                 continue
-            marker_rows.append((test_result_id, marker_name[:128], marker_value[:512] if marker_value else None))
+            marker_rows.append(
+                (
+                    test_result_id,
+                    marker_name[:128],
+                    marker_value[:512] if marker_value else None,
+                )
+            )
 
         if not marker_rows:
             return
@@ -851,7 +864,7 @@ class MariaDBReporter:
                 WHERE run_id = %s
                 """,
                 (
-                    _utcnow_naive(),
+                    _istnow_naive(),
                     total_tests,
                     passed_count,
                     failed_count,

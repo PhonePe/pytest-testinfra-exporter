@@ -118,7 +118,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  tr.finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
+          "rawSql": "SELECT\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
           "refId": "A"
         }
       ],
@@ -178,7 +178,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  CONCAT_WS(\n    '\\n\\n',\n    CASE WHEN tr.longrepr IS NOT NULL THEN CONCAT('[longrepr]\\n', tr.longrepr) END,\n    CASE WHEN tr.captured_log IS NOT NULL THEN CONCAT('[captured_log]\\n', tr.captured_log) END,\n    CASE WHEN tr.captured_stdout IS NOT NULL THEN CONCAT('[captured_stdout]\\n', tr.captured_stdout) END,\n    CASE WHEN tr.captured_stderr IS NOT NULL THEN CONCAT('[captured_stderr]\\n', tr.captured_stderr) END\n  ) AS logs\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
+          "rawSql": "SELECT\n  CONCAT_WS(\n    '\\n\\n',\n    CASE WHEN tr.full_trace IS NOT NULL THEN CONCAT('[full_trace]\\n', tr.full_trace) END,\n    CASE WHEN tr.captured_log IS NOT NULL THEN CONCAT('[captured_log]\\n', tr.captured_log) END,\n    CASE WHEN tr.captured_stdout IS NOT NULL THEN CONCAT('[captured_stdout]\\n', tr.captured_stdout) END,\n    CASE WHEN tr.captured_stderr IS NOT NULL THEN CONCAT('[captured_stderr]\\n', tr.captured_stderr) END\n  ) AS logs\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
           "refId": "A"
         }
       ],
@@ -216,14 +216,14 @@
           "type": "mysql",
           "uid": "${ds}"
         },
-        "definition": "SELECT run_id AS __value, DATE_FORMAT(CONVERT_TZ(started_at, '+00:00', '+05:30'), '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs WHERE started_at BETWEEN FROM_UNIXTIME(${__from}/1000) AND FROM_UNIXTIME(${__to}/1000) ORDER BY started_at DESC",
+        "definition": "SELECT run_id AS __value, DATE_FORMAT(started_at, '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs WHERE started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY started_at DESC",
         "hide": 0,
         "includeAll": false,
         "label": "Run",
         "multi": false,
         "name": "run_id",
         "options": [],
-        "query": "SELECT run_id AS __value, DATE_FORMAT(CONVERT_TZ(started_at, '+00:00', '+05:30'), '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs WHERE started_at BETWEEN FROM_UNIXTIME(${__from}/1000) AND FROM_UNIXTIME(${__to}/1000) ORDER BY started_at DESC",
+        "query": "SELECT run_id AS __value, DATE_FORMAT(started_at, '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs WHERE started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY started_at DESC",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -278,6 +278,6 @@
   "timezone": "",
   "title": "TestInfra - Test Logs",
   "uid": "testinfra-test-logs",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
