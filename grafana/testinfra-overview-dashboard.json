@@ -64,13 +64,6 @@
             },
             "properties": [
               {
-                "id": "custom.cellOptions",
-                "value": {
-                  "mode": "basic",
-                  "type": "color-background"
-                }
-              },
-              {
                 "id": "custom.styleField",
                 "value": "last_seen_style"
               }
@@ -125,7 +118,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  h.host_name,\n  h.first_seen,\n  h.last_seen,\n  CASE\n    WHEN h.last_seen < UTC_TIMESTAMP(6) - INTERVAL 10 DAY THEN\n      '{\"background-color\":\"rgba(245, 54, 54, 0.9)\",\"color\":\"white\"}'\n    ELSE NULL\n  END AS last_seen_style,\n  COALESCE(SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END), 0) AS pass_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS fail_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END), 0) AS skipped_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'error' THEN 1 ELSE 0 END), 0) AS error_count,\n  COALESCE(COUNT(tr.id), 0) AS total_tests\nFROM hosts h\nLEFT JOIN test_results tr ON tr.host_id = h.id\nLEFT JOIN test_runs r ON r.run_id = tr.run_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00')\n  AND (\n    '${cluster:csv}' = ''\n    OR '${cluster:csv}' = '__all'\n    OR EXISTS (\n      SELECT 1\n      FROM test_result_markers trm\n      WHERE trm.test_result_id = tr.id\n        AND trm.marker_name = 'cluster'\n        AND trm.marker_value = '${cluster:csv}'\n    )\n  )\nGROUP BY h.id, h.host_name, h.first_seen, h.last_seen\nORDER BY h.host_name;",
+          "rawSql": "SELECT\n  h.host_name,\n  h.first_seen,\n  h.last_seen,\n  CASE\n    WHEN h.last_seen < UTC_TIMESTAMP(6) - INTERVAL 10 DAY THEN\n      '{\"background-color\":\"rgba(245, 54, 54, 0.9)\",\"color\":\"white\"}'\n    ELSE '{}'\n  END AS last_seen_style,\n  COALESCE(SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END), 0) AS pass_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS fail_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END), 0) AS skipped_count,\n  COALESCE(SUM(CASE WHEN tr.status = 'error' THEN 1 ELSE 0 END), 0) AS error_count,\n  COALESCE(COUNT(tr.id), 0) AS total_tests\nFROM hosts h\nLEFT JOIN test_results tr ON tr.host_id = h.id\nLEFT JOIN test_runs r ON r.run_id = tr.run_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+00:00')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+00:00')\n  AND (\n    '${cluster:csv}' = ''\n    OR '${cluster:csv}' = '__all'\n    OR EXISTS (\n      SELECT 1\n      FROM test_result_markers trm\n      WHERE trm.test_result_id = tr.id\n        AND trm.marker_name = 'cluster'\n        AND trm.marker_value = '${cluster:csv}'\n    )\n  )\nGROUP BY h.id, h.host_name, h.first_seen, h.last_seen\nORDER BY h.host_name;",
           "refId": "A"
         }
       ],
@@ -369,6 +362,6 @@
   "timezone": "",
   "title": "TestInfra - Host Overview",
   "uid": "testinfra-overview",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
