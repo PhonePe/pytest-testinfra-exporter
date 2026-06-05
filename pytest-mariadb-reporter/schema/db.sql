@@ -18,12 +18,14 @@ CREATE TABLE IF NOT EXISTS hosts (
 
 CREATE TABLE IF NOT EXISTS tests (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  test_uid CHAR(40) NOT NULL,
   canonical_nodeid VARCHAR(255) NOT NULL,
   test_name VARCHAR(255) NOT NULL,
   test_suite VARCHAR(1024) NULL,
   test_class VARCHAR(255) NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_tests_canonical_nodeid (canonical_nodeid)
+  UNIQUE KEY uq_tests_test_uid (test_uid),
+  KEY idx_tests_canonical_nodeid (canonical_nodeid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS test_runs (

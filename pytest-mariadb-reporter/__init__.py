@@ -1,4 +1,5 @@
 import datetime as dt
+import hashlib
 import os
 import re
 import socket
@@ -29,16 +30,87 @@ def _canonical_nodeid(nodeid):
     return nodeid.split("[", 1)[0]
 
 
+def _test_uid(canonical_nodeid, test_name, test_suite, test_class):
+    payload = "|".join(
+        [
+            str(canonical_nodeid or ""),
+            str(test_name or ""),
+            str(test_suite or ""),
+            str(test_class or ""),
+        ]
+    )
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+
+
+def _is_backend_selector(value):
+    if value is None:
+        return False
+    text = str(value).strip()
+    return bool(
+        re.match(
+            r"^(?:salt|ssh|paramiko|docker|podman|local|ansible|chroot)://",
+            text,
+        )
+    )
+
+
+def _contains_backend_selector(text):
+    value = str(text or "")
+    return bool(
+        re.search(r"(?:salt|ssh|paramiko|docker|podman|local|ansible|chroot)://", value)
+    )
+
+
+def _has_dash_after_phonepe(text):
+    value = str(text or "")
+    idx = value.rfind(".phonepe")
+    if idx == -1:
+        return True
+    return "-" in value[idx + len(".phonepe") :]
+
+
+def _display_name_from_raw(raw_name):
+    text = str(raw_name or "").strip()
+    if not text:
+        return text
+
+    had_brackets = False
+    if "[" in text and text.endswith("]"):
+        had_brackets = True
+        base, bracket = text[:-1].split("[", 1)
+        text = "%s-%s" % (base, bracket)
+
+    if "-" not in text:
+        return text
+
+    base_name = text.split("-", 1)[0]
+
+    # Non-parameterized host suffixes often end in *.phonepe.<domain> with no
+    # trailing "-<param>" segment; keep only the base test name in that case.
+    if ".phonepe" in text and not _has_dash_after_phonepe(text):
+        return base_name
+
+    # Host-only pattern (non-parameterized): test_name-salt://host... -> keep only base name.
+    if _contains_backend_selector(text) and not had_brackets:
+        return base_name
+
+    # Requested behavior: keep first segment and last segment for host+param names.
+    if _contains_backend_selector(text):
+        last_segment = text.rsplit("-", 1)[-1]
+        if not last_segment or "://" in last_segment or last_segment.endswith(">"):
+            return base_name
+        return "%s-%s" % (base_name, last_segment)
+
+    return text
+
+
 def _normalized_test_name(item, nodeid):
-    original_name = getattr(item, "originalname", None)
-    if original_name:
-        return str(original_name)
-
-    item_name = getattr(item, "name", None)
+    item_name = getattr(item, "name", None) if item is not None else None
     if item_name:
-        return _canonical_nodeid(str(item_name))
+        return _display_name_from_raw(item_name)
 
-    return _canonical_nodeid(str(nodeid).rsplit("::", 1)[-1])
+    node_suffix = str(nodeid).rsplit("::", 1)[-1]
+    return _display_name_from_raw(node_suffix)
 
 
 def _normalize_marker_value(value):
@@ -457,12 +529,14 @@ class MariaDBReporter:
             """
             CREATE TABLE IF NOT EXISTS tests (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                            test_uid CHAR(40) NOT NULL,
               canonical_nodeid VARCHAR(255) NOT NULL,
               test_name VARCHAR(255) NOT NULL,
               test_suite VARCHAR(1024) NULL,
               test_class VARCHAR(255) NULL,
               PRIMARY KEY (id),
-              UNIQUE KEY uq_tests_canonical_nodeid (canonical_nodeid)
+                            UNIQUE KEY uq_tests_test_uid (test_uid),
+                            KEY idx_tests_canonical_nodeid (canonical_nodeid)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """,
             """
@@ -529,6 +603,106 @@ class MariaDBReporter:
         for statement in statements:
             cursor.execute(statement)
 
+                # Schema evolution for existing installations.
+        migrations = [
+            """
+            ALTER TABLE tests
+            ADD COLUMN IF NOT EXISTS test_uid CHAR(40) NULL AFTER id
+            """,
+            """
+            ALTER TABLE tests
+                        DROP INDEX IF EXISTS uq_tests_canonical_nodeid
+            """,
+            """
+                        ALTER TABLE tests
+                        DROP INDEX IF EXISTS uq_tests_test_uid
+            """,
+            """
+                        CREATE TEMPORARY TABLE IF NOT EXISTS tests_dedupe_map (
+                            drop_id BIGINT UNSIGNED NOT NULL,
+                            keep_id BIGINT UNSIGNED NOT NULL,
+                            PRIMARY KEY (drop_id)
+                        )
+            """,
+            """
+                        TRUNCATE TABLE tests_dedupe_map
+            """,
+            """
+                        INSERT INTO tests_dedupe_map (drop_id, keep_id)
+                        SELECT t.id AS drop_id, k.keep_id
+                        FROM tests t
+                        JOIN (
+                            SELECT
+                                SHA1(
+                                    CONCAT_WS(
+                                        '|',
+                                        COALESCE(canonical_nodeid, ''),
+                                        COALESCE(test_name, ''),
+                                        COALESCE(test_suite, ''),
+                                        COALESCE(test_class, '')
+                                    )
+                                ) AS dedupe_key,
+                                MIN(id) AS keep_id
+                            FROM tests
+                            GROUP BY dedupe_key
+                        ) k
+                            ON SHA1(
+                                     CONCAT_WS(
+                                         '|',
+                                         COALESCE(t.canonical_nodeid, ''),
+                                         COALESCE(t.test_name, ''),
+                                         COALESCE(t.test_suite, ''),
+                                         COALESCE(t.test_class, '')
+                                     )
+                                 ) = k.dedupe_key
+                        WHERE t.id <> k.keep_id
+            """,
+            """
+                        UPDATE test_results tr
+                        JOIN tests_dedupe_map m ON tr.test_id = m.drop_id
+                        SET tr.test_id = m.keep_id
+            """,
+            """
+                        DELETE t
+                        FROM tests t
+                        JOIN tests_dedupe_map m ON t.id = m.drop_id
+            """,
+            """
+                        DROP TEMPORARY TABLE IF EXISTS tests_dedupe_map
+                        """,
+                        """
+                        UPDATE tests
+                        SET test_uid = SHA1(
+                            CONCAT_WS(
+                                '|',
+                                COALESCE(canonical_nodeid, ''),
+                                COALESCE(test_name, ''),
+                                COALESCE(test_suite, ''),
+                                COALESCE(test_class, '')
+                            )
+                        )
+                        """,
+                        """
+                        ALTER TABLE tests
+                        MODIFY COLUMN test_uid CHAR(40) NOT NULL
+                        """,
+                        """
+                        ALTER TABLE tests
+                        DROP COLUMN IF EXISTS nodeid
+                        """,
+                        """
+                        ALTER TABLE tests
+                        ADD UNIQUE KEY IF NOT EXISTS uq_tests_test_uid (test_uid)
+                        """,
+                        """
+                        ALTER TABLE tests
+                        ADD KEY IF NOT EXISTS idx_tests_canonical_nodeid (canonical_nodeid)
+            """,
+        ]
+
+        for statement in migrations:
+            cursor.execute(statement)
+
     def pytest_sessionstart(self, session):
         self._ensure_connection()
         if not self.enabled:
@@ -572,11 +746,16 @@ class MariaDBReporter:
 
         nodeid = report.nodeid
         if nodeid not in self._metadata_by_nodeid:
+            canonical_nodeid = _canonical_nodeid(nodeid)
+            test_name = _normalized_test_name(item, nodeid)
+            test_suite = item.location[0] if hasattr(item, "location") else None
+            test_class = item.cls.__name__ if getattr(item, "cls", None) else None
             self._metadata_by_nodeid[nodeid] = {
-                "canonical_nodeid": _canonical_nodeid(nodeid),
-                "test_name": _normalized_test_name(item, nodeid),
-                "test_suite": item.location[0] if hasattr(item, "location") else None,
-                "test_class": item.cls.__name__ if getattr(item, "cls", None) else None,
+                "test_uid": _test_uid(canonical_nodeid, test_name, test_suite, test_class),
+                "canonical_nodeid": canonical_nodeid,
+                "test_name": test_name,
+                "test_suite": test_suite,
+                "test_class": test_class,
                 "host_name": self._resolve_host_name(item),
                 "markers": _extract_item_markers(item),
             }
@@ -674,9 +853,18 @@ class MariaDBReporter:
         self._result_rows.append(
             {
                 "nodeid": nodeid,
+                "test_uid": metadata.get(
+                    "test_uid",
+                    _test_uid(
+                        metadata.get("canonical_nodeid", _canonical_nodeid(nodeid)),
+                        metadata.get("test_name", _normalized_test_name(None, nodeid)),
+                        metadata.get("test_suite"),
+                        metadata.get("test_class"),
+                    ),
+                ),
                 "canonical_nodeid": metadata.get("canonical_nodeid", _canonical_nodeid(nodeid)),
                 "test_name": metadata.get(
-                    "test_name", _canonical_nodeid(str(nodeid).rsplit("::", 1)[-1])
+                    "test_name", _normalized_test_name(None, nodeid)
                 ),
                 "test_suite": metadata.get("test_suite"),
                 "test_class": metadata.get("test_class"),
@@ -711,15 +899,17 @@ class MariaDBReporter:
     def _upsert_test(self, cursor, row):
         cursor.execute(
             """
-            INSERT INTO tests (canonical_nodeid, test_name, test_suite, test_class)
-            VALUES (%s, %s, %s, %s)
+                        INSERT INTO tests (test_uid, canonical_nodeid, test_name, test_suite, test_class)
+                        VALUES (%s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
               id = LAST_INSERT_ID(id),
+                            canonical_nodeid = VALUES(canonical_nodeid),
               test_name = VALUES(test_name),
               test_suite = VALUES(test_suite),
               test_class = VALUES(test_class)
             """,
             (
+                                row["test_uid"],
                 row["canonical_nodeid"],
                 row["test_name"],
                 row["test_suite"],
@@ -836,11 +1026,11 @@ class MariaDBReporter:
                     host_id = self._upsert_host(cursor, host_name)
                     host_cache[host_name] = host_id
 
-                canonical_nodeid = row["canonical_nodeid"]
-                test_id = test_cache.get(canonical_nodeid)
+                test_uid = row["test_uid"]
+                test_id = test_cache.get(test_uid)
                 if test_id is None:
                     test_id = self._upsert_test(cursor, row)
-                    test_cache[canonical_nodeid] = test_id
+                    test_cache[test_uid] = test_id
 
                 test_result_id = self._insert_result(cursor, host_id, test_id, row)
                 self._replace_result_markers(cursor, test_result_id, row.get("markers", []))

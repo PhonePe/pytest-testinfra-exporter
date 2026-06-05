@@ -1,0 +1,1019 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Host Overview",
+      "type": "link",
+      "url": "/d/testinfra-overview/testinfra-host-overview?var-ds=${ds}"
+    },
+    {
+      "title": "Suite Overview",
+      "type": "link",
+      "url": "/d/testinfra-suite-overview/testinfra-suite-overview?var-ds=${ds}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "All test result rows captured in the selected time window.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#5794F2",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#5794F2",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(tr.id) AS total_tests_run FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}'));",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Tests Run",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Passing test results in the selected time window.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#73BF69",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#73BF69",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END), 0) AS total_passed FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}'));",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Passed",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Distinct hosts that reported at least one result in the selected window.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#56A64B",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#56A64B",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(DISTINCT h.id) AS total_hosts FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id JOIN hosts h ON h.id = tr.host_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}'));",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Hosts",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Explicit failures, excluding errored results.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#F2495C",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#F2495C",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS total_failed FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}'));",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Failed",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Passing and skipped results divided by all recorded results in the window.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#F2495C",
+                "value": null
+              },
+              {
+                "color": "#FF9830",
+                "value": 0.8
+              },
+              {
+                "color": "#73BF69",
+                "value": 0.95
+              }
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "options": {
+        "colorMode": "background_gradient",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(CASE WHEN tr.status IN ('pass', 'skipped') THEN 1 ELSE 0 END) / NULLIF(COUNT(tr.id), 0), 0) AS pass_rate FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}'));",
+          "refId": "A"
+        }
+      ],
+      "title": "Pass Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Average per-test execution time for all recorded results in the window.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#FFB357",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#FFB357",
+                "value": null
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "options": {
+        "colorMode": "background_solid",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(ROUND(AVG(tr.duration_ms), 0), 0) AS avg_duration_ms FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}'));",
+          "refId": "A"
+        }
+      ],
+      "title": "Avg Duration",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Daily execution volume split by result status.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Results",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 0,
+            "pointSize": 0,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#C15C17",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 5
+      },
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT UNIX_TIMESTAMP(COALESCE(r.finished_at, r.started_at)) AS time, LOWER(tr.status) AS metric, COUNT(tr.id) AS value FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id WHERE COALESCE(r.finished_at, r.started_at) BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}')) GROUP BY r.run_id, tr.status, r.finished_at, r.started_at ORDER BY COALESCE(r.finished_at, r.started_at);",
+          "refId": "A"
+        }
+      ],
+      "title": "Execution Trend",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Overall mix of result states in the selected time window.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#C15C17",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "xfail"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#8AB8FF",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "xpass"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#B877D9",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 14,
+        "y": 5
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COALESCE(SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END), 0) AS pass, COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS fail, COALESCE(SUM(CASE WHEN tr.status = 'error' THEN 1 ELSE 0 END), 0) AS error, COALESCE(SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END), 0) AS skipped, COALESCE(SUM(CASE WHEN tr.status = 'xfail' THEN 1 ELSE 0 END), 0) AS xfail, COALESCE(SUM(CASE WHEN tr.status = 'xpass' THEN 1 ELSE 0 END), 0) AS xpass FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}'));",
+          "refId": "A"
+        }
+      ],
+      "title": "Status Distribution",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Hosts with the highest concentration of fail and error results.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Hosts",
+            "axisPlacement": "auto",
+            "fillOpacity": 90,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "fail"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "error_count"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "error"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#C15C17",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 10,
+        "x": 0,
+        "y": 15
+      },
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.92,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right",
+          "showLegend": true
+        },
+        "orientation": "horizontal",
+        "showValue": "always",
+        "stacking": "normal",
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "xField": "host_name",
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT h.host_name, COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS fail_count, COALESCE(SUM(CASE WHEN tr.status = 'error' THEN 1 ELSE 0 END), 0) AS error_count FROM test_results tr JOIN test_runs r ON r.run_id = tr.run_id JOIN hosts h ON h.id = tr.host_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}')) GROUP BY h.id, h.host_name HAVING fail_count > 0 OR error_count > 0 ORDER BY (SUM(CASE WHEN tr.status IN ('fail', 'error') THEN 1 ELSE 0 END) / NULLIF(COUNT(tr.id), 0)) DESC, fail_count DESC, error_count DESC LIMIT 10;",
+          "refId": "A"
+        }
+      ],
+      "title": "Most Impacted Hosts",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "description": "Latest runs with outcome, host footprint, and pass rate.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass_rate_pct"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 10,
+        "y": 15
+      },
+      "options": {
+        "cellHeight": "sm",
+        "columnFilter": true,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "started_at"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT r.run_id, r.trigger_source, DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') AS started_at, DATE_FORMAT(COALESCE(r.finished_at, r.started_at), '%Y-%m-%d %H:%i:%s') AS finished_at, COUNT(tr.id) AS total_tests, COALESCE(SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END), 0) AS passed, COALESCE(SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END), 0) AS failed, COALESCE(SUM(CASE WHEN tr.status = 'error' THEN 1 ELSE 0 END), 0) AS errored, COUNT(DISTINCT h.id) AS hosts, ROUND(100 * COALESCE(SUM(CASE WHEN tr.status IN ('pass', 'skipped') THEN 1 ELSE 0 END), 0) / NULLIF(COUNT(tr.id), 0), 1) AS pass_rate_pct FROM test_runs r LEFT JOIN test_results tr ON tr.run_id = r.run_id LEFT JOIN hosts h ON h.id = tr.host_id WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND ('${trigger_source:csv}' = '__all' OR FIND_IN_SET(r.trigger_source, '${trigger_source:csv}') > 0) AND ('${cluster:csv}' = '' OR '${cluster:csv}' = '__all' OR tr.id IS NULL OR EXISTS (SELECT 1 FROM test_result_markers trm WHERE trm.test_result_id = tr.id AND trm.marker_name = 'cluster' AND trm.marker_value = '${cluster:csv}')) GROUP BY r.run_id, r.trigger_source, r.started_at, r.finished_at ORDER BY r.started_at DESC LIMIT 12;",
+          "refId": "A"
+        }
+      ],
+      "title": "Recent Runs",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "testinfra",
+    "mariadb",
+    "executive",
+    "summary"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "mysql",
+        "refresh": 1,
+        "label": "MySQL/MariaDB Datasource",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "TestInfra MariaDB",
+          "value": "testinfra-mariadb"
+        }
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT trm.marker_value AS __value, trm.marker_value AS __text FROM test_result_markers trm JOIN test_results tr ON tr.id = trm.test_result_id JOIN test_runs r ON r.run_id = tr.run_id WHERE trm.marker_name = 'cluster' AND trm.marker_value IS NOT NULL AND trm.marker_value <> '' AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY trm.marker_value",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "__all",
+        "label": "Cluster",
+        "multi": false,
+        "name": "cluster",
+        "options": [],
+        "query": "SELECT DISTINCT trm.marker_value AS __value, trm.marker_value AS __text FROM test_result_markers trm JOIN test_results tr ON tr.id = trm.test_result_id JOIN test_runs r ON r.run_id = tr.run_id WHERE trm.marker_name = 'cluster' AND trm.marker_value IS NOT NULL AND trm.marker_value <> '' AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY trm.marker_value",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "__all"
+          ]
+        }
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT r.trigger_source AS __value, r.trigger_source AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY r.trigger_source",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "__all",
+        "label": "Trigger Source",
+        "multi": true,
+        "name": "trigger_source",
+        "options": [],
+        "query": "SELECT DISTINCT r.trigger_source AS __value, r.trigger_source AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY r.trigger_source",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 2,
+        "type": "query",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "__all"
+          ]
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-14d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "TestInfra - Executive Summary",
+  "uid": "testinfra-executive-summary",
+  "version": 1,
+  "weekStart": ""
+}
