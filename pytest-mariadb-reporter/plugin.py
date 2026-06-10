@@ -1,0 +1,722 @@
+import datetime as dt
+import hashlib
+import os
+import re
+import socket
+import uuid
+import warnings
+from typing import Dict, List, Optional
+from urllib.parse import urlsplit
+
+import pytest
+
+from .backend import AbstractStorageBackend
+from .backends.mariadb import MariaDBBackend
+from .models import MarkerDef, TestResultRecord, TestRunSummary
+
+
+IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
+
+
+def _istnow_naive():
+    return dt.datetime.now(IST).replace(tzinfo=None)
+
+
+def _epoch_to_ist_naive(value):
+    if value is None:
+        return None
+    return dt.datetime.fromtimestamp(value, tz=dt.timezone.utc).astimezone(IST).replace(
+        tzinfo=None
+    )
+
+
+def _canonical_nodeid(nodeid):
+    return nodeid.split("[", 1)[0]
+
+
+def _test_uid(canonical_nodeid, test_name, test_suite, test_class):
+    payload = "|".join(
+        [
+            str(canonical_nodeid or ""),
+            str(test_name or ""),
+            str(test_suite or ""),
+            str(test_class or ""),
+        ]
+    )
+    return hashlib.sha1(payload.encode("utf-8")).hexdigest()
+
+
+def _is_backend_selector(value):
+    if value is None:
+        return False
+    text = str(value).strip()
+    return bool(
+        re.match(
+            r"^(?:salt|ssh|paramiko|docker|podman|local|ansible|chroot)://",
+            text,
+        )
+    )
+
+
+def _contains_backend_selector(text):
+    value = str(text or "")
+    return bool(
+        re.search(r"(?:salt|ssh|paramiko|docker|podman|local|ansible|chroot)://", value)
+    )
+
+
+def _has_dash_after_phonepe(text):
+    value = str(text or "")
+    idx = value.rfind(".phonepe")
+    if idx == -1:
+        return True
+    return "-" in value[idx + len(".phonepe") :]
+
+
+def _display_name_from_raw(raw_name):
+    text = str(raw_name or "").strip()
+    if not text:
+        return text
+
+    had_brackets = False
+    if "[" in text and text.endswith("]"):
+        had_brackets = True
+        base, bracket = text[:-1].split("[", 1)
+        text = "%s-%s" % (base, bracket)
+
+    if "-" not in text:
+        return text
+
+    base_name = text.split("-", 1)[0]
+
+    if ".phonepe" in text and not _has_dash_after_phonepe(text):
+        return base_name
+
+    if _contains_backend_selector(text) and not had_brackets:
+        return base_name
+
+    if _contains_backend_selector(text):
+        last_segment = text.rsplit("-", 1)[-1]
+        if not last_segment or "://" in last_segment or last_segment.endswith(">"):
+            return base_name
+        return "%s-%s" % (base_name, last_segment)
+
+    return text
+
+
+def _normalized_test_name(item, nodeid):
+    item_name = getattr(item, "name", None) if item is not None else None
+    if item_name:
+        return _display_name_from_raw(item_name)
+
+    node_suffix = str(nodeid).rsplit("::", 1)[-1]
+    return _display_name_from_raw(node_suffix)
+
+
+def _normalize_marker_value(value):
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    return text or None
+
+
+def _extract_item_markers(item):
+    markers: List[MarkerDef] = []
+    seen = set()
+    excluded_marker_names = {"parametrize"}
+
+    for marker in item.iter_markers():
+        marker_name = str(getattr(marker, "name", "") or "").strip()
+        if not marker_name:
+            continue
+        if marker_name in excluded_marker_names:
+            continue
+
+        raw_values = []
+        for arg in getattr(marker, "args", ()):
+            normalized = _normalize_marker_value(arg)
+            if normalized is not None:
+                raw_values.append(normalized)
+
+        kwargs = getattr(marker, "kwargs", {}) or {}
+        for key in sorted(kwargs):
+            normalized = _normalize_marker_value(kwargs[key])
+            if normalized is not None:
+                raw_values.append("%s=%s" % (key, normalized))
+
+        marker_values = raw_values or [None]
+        for marker_value in marker_values:
+            marker_value = marker_value[:512] if marker_value is not None else None
+            marker_key = (marker_name, marker_value)
+            if marker_key in seen:
+                continue
+            seen.add(marker_key)
+            markers.append(MarkerDef(name=marker_name, value=marker_value))
+
+    return markers
+
+
+def _is_concrete_host_value(value):
+    if not value:
+        return False
+
+    text = str(value).strip()
+    if not text:
+        return False
+
+    return not any(ch in text for ch in ("*", "?", "[", "]", ",", " "))
+
+
+def _normalize_backend_target(value):
+    if not value:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    parsed = urlsplit(text)
+    if parsed.scheme:
+        scheme = parsed.scheme.lower()
+        if scheme == "salt":
+            host_value = parsed.netloc or parsed.path.lstrip("/")
+        else:
+            host_value = parsed.hostname or parsed.netloc or parsed.path.lstrip("/")
+    else:
+        host_value = text
+
+    host_value = str(host_value).strip() if host_value else None
+    if not _is_concrete_host_value(host_value):
+        return None
+
+    return host_value
+
+
+def _extract_backend_host_from_nodeid(nodeid):
+    if not nodeid:
+        return None
+
+    matches = re.findall(
+        r"((?:salt|ssh|paramiko|docker|podman|local|ansible|chroot)://[^\]\s]+)",
+        str(nodeid),
+    )
+    if not matches:
+        return None
+
+    for candidate in reversed(matches):
+        normalized = _normalize_backend_target(candidate)
+        if normalized:
+            return normalized
+
+    return None
+
+
+def _default_failure_map_path():
+    package_root = os.path.dirname(__file__)
+    return os.path.join(package_root, "failure_mapper", "failure_map.yaml")
+
+
+def _build_backend(backend_name: str) -> AbstractStorageBackend:
+    normalized = (backend_name or "mariadb").strip().lower()
+    if normalized == "mariadb":
+        return MariaDBBackend()
+    raise ValueError("Unsupported backend '%s'. Supported values: mariadb" % backend_name)
+
+
+def pytest_addoption(parser):
+    group = parser.getgroup("mariadb-reporting")
+    group.addoption(
+        "--mariadb-report",
+        action="store_true",
+        default=False,
+        help="Enable writing pytest results to storage backend.",
+    )
+    group.addoption(
+        "--report-backend",
+        action="store",
+        default="mariadb",
+        help="Storage backend for reporting (currently supported: mariadb).",
+    )
+    group.addoption("--mariadb-host", action="store", default="localhost")
+    group.addoption("--mariadb-port", action="store", type=int, default=3306)
+    group.addoption("--mariadb-user", action="store", default="testinfra_user")
+    group.addoption("--mariadb-password", action="store", default="password")
+    group.addoption("--mariadb-database", action="store", default="testinfra_reports")
+    group.addoption(
+        "--mariadb-suite-version",
+        action="store",
+        default=None,
+        help="Optional suite version or git SHA.",
+    )
+    group.addoption(
+        "--mariadb-init-schema",
+        action="store_true",
+        default=False,
+        help="Create/update required MariaDB schema before sending reports.",
+    )
+    group.addoption(
+        "--mariadb-failure-map",
+        action="store",
+        default=_default_failure_map_path(),
+        help="Path to YAML map used for tagging failed/error tests.",
+    )
+
+
+class FailureTagger:
+    def __init__(self, config):
+        self.config = config
+        self._disabled_reason = None
+        self._error_maps = []
+        self._map_path = config.getoption("--mariadb-failure-map")
+        self._load_error_maps()
+
+    @property
+    def enabled(self):
+        return bool(self._error_maps)
+
+    def _disable(self, reason):
+        if not self._disabled_reason:
+            warnings.warn("Failure tagger disabled: %s" % reason)
+        self._disabled_reason = reason
+        self._error_maps = []
+
+    def _normalize_match_type(self, value):
+        if not value:
+            return "exact"
+        return str(value).strip().lower()
+
+    def _load_error_maps(self):
+        try:
+            import yaml
+        except Exception as exc:
+            self._disable(
+                "PyYAML is not available. Install with: pip install pyyaml (%s)" % exc
+            )
+            return
+
+        map_path = self._map_path
+        if not map_path or not os.path.exists(map_path):
+            self._disable("failure map file not found at: %s" % map_path)
+            return
+
+        try:
+            with open(map_path, "r", encoding="utf-8") as handle:
+                data = yaml.safe_load(handle) or {}
+        except Exception as exc:
+            self._disable("failed loading failure map: %s" % exc)
+            return
+
+        raw_maps = data.get("error_maps") or []
+        if not raw_maps:
+            self._disable("error_maps section is empty in: %s" % map_path)
+            return
+
+        loaded_maps = []
+        for idx, entry in enumerate(raw_maps, start=1):
+            patterns = entry.get("target_logs") or entry.get("patterns") or []
+            patterns = [str(pattern) for pattern in patterns if pattern is not None]
+            if not patterns:
+                warnings.warn("Failure tagger skipped map #%d due to empty target_logs" % idx)
+                continue
+
+            match_type = self._normalize_match_type(entry.get("match_type", "exact"))
+            if match_type not in ("exact", "regex"):
+                warnings.warn(
+                    "Failure tagger skipped map #%d due to unsupported match_type '%s'"
+                    % (idx, match_type)
+                )
+                continue
+
+            defect = entry.get("defect") or {}
+            defect_name = defect.get("name")
+            if not defect_name:
+                warnings.warn("Failure tagger skipped map #%d due to missing defect.name" % idx)
+                continue
+
+            try:
+                compiled = [
+                    re.compile(pattern) if match_type == "regex" else None
+                    for pattern in patterns
+                ]
+            except re.error as exc:
+                warnings.warn(
+                    "Failure tagger skipped map #%d due to invalid regex: %s" % (idx, exc)
+                )
+                continue
+
+            loaded_maps.append(
+                {
+                    "patterns": patterns,
+                    "match_type": match_type,
+                    "compiled": compiled,
+                    "defect_name": str(defect_name),
+                }
+            )
+
+        if not loaded_maps:
+            self._disable("no valid maps available from: %s" % map_path)
+            return
+
+        self._error_maps = loaded_maps
+
+    def tag_failure(self, status, text_parts):
+        if status not in ("fail", "error"):
+            return None
+        if not self.enabled:
+            return None
+
+        full_text = "\n\n".join(str(part) for part in text_parts if part)
+        if not full_text:
+            return None
+
+        for entry in self._error_maps:
+            match_type = entry["match_type"]
+            for pattern, compiled in zip(entry["patterns"], entry["compiled"]):
+                if match_type == "regex":
+                    if compiled and compiled.search(full_text):
+                        return entry["defect_name"]
+                else:
+                    if pattern in full_text:
+                        return entry["defect_name"]
+
+        return None
+
+
+class TestinfraStorageReporter:
+    def __init__(self, config):
+        self.config = config
+        self.enabled = bool(config.getoption("--mariadb-report"))
+        self._failure_tagger = config.pluginmanager.get_plugin("failure-tagger")
+        self._disabled_reason = None
+        self._backend_name = config.getoption("--report-backend")
+        self._backend: Optional[AbstractStorageBackend] = None
+        self._run_id = str(uuid.uuid4())
+        self._run_started_at = _istnow_naive()
+        self._reports_by_nodeid: Dict[str, Dict[str, object]] = {}
+        self._metadata_by_nodeid: Dict[str, Dict[str, object]] = {}
+        self._result_rows: List[TestResultRecord] = []
+
+    @property
+    def backend(self) -> Optional[AbstractStorageBackend]:
+        return self._backend
+
+    def _disable(self, reason):
+        if self.enabled:
+            warnings.warn("Storage pytest reporter disabled: %s" % reason)
+        self.enabled = False
+        self._disabled_reason = reason
+
+    def _resolve_host_name(self, item):
+        host_obj = item.funcargs.get("host") if hasattr(item, "funcargs") else None
+        if host_obj is not None:
+            backend = getattr(host_obj, "backend", None)
+            getter = getattr(backend, "get_hostname", None)
+            if callable(getter):
+                try:
+                    host_name = getter()
+                    if host_name:
+                        return str(host_name)
+                except Exception:
+                    pass
+
+        parsed_host = _extract_backend_host_from_nodeid(getattr(item, "nodeid", None))
+        if parsed_host:
+            return parsed_host
+
+        hosts_opt = item.config.getoption("hosts", default=None)
+        normalized_hosts_opt = _normalize_backend_target(hosts_opt)
+        if normalized_hosts_opt:
+            return normalized_hosts_opt
+        return socket.gethostname()
+
+    def _extract_sections(self, report):
+        section_map = {
+            "captured_stdout": [],
+            "captured_stderr": [],
+            "captured_log": [],
+        }
+
+        for sec_name, sec_content in getattr(report, "sections", []):
+            if not sec_content:
+                continue
+            lower = sec_name.lower()
+            if "stdout" in lower:
+                section_map["captured_stdout"].append(sec_content)
+            elif "stderr" in lower:
+                section_map["captured_stderr"].append(sec_content)
+            elif "log" in lower:
+                section_map["captured_log"].append(sec_content)
+            else:
+                section_map["captured_log"].append("[%s]\n%s" % (sec_name, sec_content))
+
+        return {
+            key: "\n\n".join(values) if values else None
+            for key, values in section_map.items()
+        }
+
+    def _combined_longrepr(self, reports):
+        longrepr_chunks = []
+        for report in reports:
+            text = getattr(report, "longreprtext", None)
+            if text:
+                longrepr_chunks.append("[%s]\n%s" % (report.when, text))
+        if not longrepr_chunks:
+            return None
+        return "\n\n".join(longrepr_chunks)
+
+    def _determine_status(self, setup_report, call_report, teardown_report):
+        if call_report is not None:
+            if hasattr(call_report, "wasxfail"):
+                if call_report.skipped:
+                    return "xfail"
+                if call_report.passed or call_report.failed:
+                    return "xpass"
+            if call_report.passed:
+                if teardown_report is not None and teardown_report.failed:
+                    return "error"
+                return "pass"
+            if call_report.failed:
+                return "fail"
+            if call_report.skipped:
+                return "skipped"
+
+        if setup_report is not None:
+            if setup_report.skipped:
+                return "skipped"
+            if setup_report.failed:
+                return "error"
+
+        if teardown_report is not None and teardown_report.failed:
+            return "error"
+
+        return "error"
+
+    def pytest_sessionstart(self, session):
+        if not self.enabled:
+            return
+
+        try:
+            self._backend = _build_backend(self._backend_name)
+        except Exception as exc:
+            self._disable(str(exc))
+            return
+
+        self._backend.initialize(self.config)
+        if hasattr(self._backend, "enabled") and not getattr(self._backend, "enabled"):
+            self._disable(getattr(self._backend, "disabled_reason", "backend disabled"))
+            return
+
+        run_summary = TestRunSummary(
+            run_id=self._run_id,
+            trigger_source=socket.getfqdn(),
+            suite_version=self.config.getoption("--mariadb-suite-version"),
+            started_at=self._run_started_at,
+        )
+        self._backend.session_start(run_summary)
+
+    @pytest.hookimpl(hookwrapper=True)
+    def pytest_runtest_makereport(self, item, call):
+        outcome = yield
+        report = outcome.get_result()
+
+        if not self.enabled:
+            return
+
+        nodeid = report.nodeid
+        if nodeid not in self._metadata_by_nodeid:
+            canonical_nodeid = _canonical_nodeid(nodeid)
+            test_name = _normalized_test_name(item, nodeid)
+            test_suite = item.location[0] if hasattr(item, "location") else None
+            test_class = item.cls.__name__ if getattr(item, "cls", None) else None
+            self._metadata_by_nodeid[nodeid] = {
+                "test_uid": _test_uid(canonical_nodeid, test_name, test_suite, test_class),
+                "canonical_nodeid": canonical_nodeid,
+                "test_name": test_name,
+                "test_suite": test_suite,
+                "test_class": test_class,
+                "host_name": self._resolve_host_name(item),
+                "markers": _extract_item_markers(item),
+            }
+
+    def pytest_runtest_logreport(self, report):
+        if not self.enabled:
+            return
+
+        nodeid = report.nodeid
+        phases = self._reports_by_nodeid.setdefault(nodeid, {})
+        phases[report.when] = report
+
+        if report.when != "teardown":
+            return
+
+        setup_report = phases.get("setup")
+        call_report = phases.get("call")
+        teardown_report = phases.get("teardown")
+
+        phase_reports = [r for r in (setup_report, call_report, teardown_report) if r is not None]
+        status = self._determine_status(setup_report, call_report, teardown_report)
+
+        stops = [getattr(r, "stop", None) for r in phase_reports]
+        starts = [getattr(r, "start", None) for r in phase_reports]
+
+        started_at = (
+            _epoch_to_ist_naive(min(s for s in starts if s is not None))
+            if any(s is not None for s in starts)
+            else None
+        )
+        finished_at = (
+            _epoch_to_ist_naive(max(s for s in stops if s is not None))
+            if any(s is not None for s in stops)
+            else started_at
+        )
+
+        duration_ms = int(
+            round(sum(float(getattr(r, "duration", 0.0) or 0.0) for r in phase_reports) * 1000)
+        )
+
+        merged_sections = {
+            "captured_stdout": [],
+            "captured_stderr": [],
+            "captured_log": [],
+        }
+        for phase_report in phase_reports:
+            extracted = self._extract_sections(phase_report)
+            for key in merged_sections:
+                if extracted[key]:
+                    merged_sections[key].append(extracted[key])
+
+        metadata = self._metadata_by_nodeid.get(nodeid, {})
+
+        error_type = None
+        error_message = None
+        full_trace_text = self._combined_longrepr(phase_reports)
+        captured_log_text = (
+            "\n\n".join(merged_sections["captured_log"])
+            if merged_sections["captured_log"]
+            else None
+        )
+        captured_stdout_text = (
+            "\n\n".join(merged_sections["captured_stdout"])
+            if merged_sections["captured_stdout"]
+            else None
+        )
+        captured_stderr_text = (
+            "\n\n".join(merged_sections["captured_stderr"])
+            if merged_sections["captured_stderr"]
+            else None
+        )
+
+        if status in ("fail", "error"):
+            failure_report = call_report or setup_report or teardown_report
+            if failure_report is not None:
+                if getattr(failure_report, "longreprtext", None):
+                    error_message = failure_report.longreprtext
+                outcome = getattr(failure_report, "outcome", None)
+                if outcome == "failed":
+                    error_type = "assertion" if call_report is failure_report else "setup_or_teardown"
+                elif outcome == "skipped":
+                    error_type = "skipped"
+
+        failure_tag = None
+        if self._failure_tagger is not None:
+            failure_tag = self._failure_tagger.tag_failure(
+                status,
+                [
+                    error_message,
+                    full_trace_text,
+                    captured_log_text,
+                    captured_stdout_text,
+                    captured_stderr_text,
+                ],
+            )
+
+        self._result_rows.append(
+            TestResultRecord(
+                nodeid=nodeid,
+                test_uid=metadata.get(
+                    "test_uid",
+                    _test_uid(
+                        metadata.get("canonical_nodeid", _canonical_nodeid(nodeid)),
+                        metadata.get("test_name", _normalized_test_name(None, nodeid)),
+                        metadata.get("test_suite"),
+                        metadata.get("test_class"),
+                    ),
+                ),
+                canonical_nodeid=metadata.get("canonical_nodeid", _canonical_nodeid(nodeid)),
+                test_name=metadata.get("test_name", _normalized_test_name(None, nodeid)),
+                test_suite=metadata.get("test_suite"),
+                test_class=metadata.get("test_class"),
+                host_name=metadata.get("host_name") or socket.gethostname(),
+                status=status,
+                failure_tag=failure_tag,
+                duration_ms=duration_ms,
+                started_at=started_at,
+                finished_at=finished_at,
+                error_type=error_type,
+                error_message=error_message,
+                full_trace=full_trace_text,
+                captured_log=captured_log_text,
+                captured_stdout=captured_stdout_text,
+                captured_stderr=captured_stderr_text,
+                markers=metadata.get("markers", []),
+            )
+        )
+
+    def pytest_sessionfinish(self, session, exitstatus):
+        if not self.enabled:
+            return
+
+        if self._backend is None:
+            return
+
+        total_tests = len(self._result_rows)
+        passed_count = sum(1 for row in self._result_rows if row.status == "pass")
+        failed_count = sum(1 for row in self._result_rows if row.status == "fail")
+        skipped_count = sum(1 for row in self._result_rows if row.status == "skipped")
+        errored_count = sum(1 for row in self._result_rows if row.status == "error")
+
+        counters = {
+            "finished_at": _istnow_naive(),
+            "total_tests": total_tests,
+            "passed_count": passed_count,
+            "failed_count": failed_count,
+            "skipped_count": skipped_count,
+            "errored_count": errored_count,
+        }
+
+        self._backend.save_results(self._run_id, self._result_rows)
+        self._backend.session_finish(self._run_id, counters)
+
+    def pytest_terminal_summary(self, terminalreporter, exitstatus, config):
+        if not config.getoption("--mariadb-report"):
+            return
+
+        terminalreporter.write_sep("-", "Storage reporter")
+        terminalreporter.write_line("enabled: %s" % ("yes" if self.enabled else "no"))
+        terminalreporter.write_line("backend: %s" % self._backend_name)
+        terminalreporter.write_line("run_id: %s" % self._run_id)
+        terminalreporter.write_line("results_buffered: %d" % len(self._result_rows))
+        if self._failure_tagger is not None:
+            terminalreporter.write_line(
+                "failure_tagger_enabled: %s" % ("yes" if self._failure_tagger.enabled else "no")
+            )
+            terminalreporter.write_line(
+                "failure_map_path: %s" % self.config.getoption("--mariadb-failure-map")
+            )
+            if self._failure_tagger._disabled_reason:
+                terminalreporter.write_line(
+                    "failure_tagger_disabled_reason: %s"
+                    % self._failure_tagger._disabled_reason
+                )
+        if self._disabled_reason:
+            terminalreporter.write_line("disabled_reason: %s" % self._disabled_reason)
+
+
+def pytest_configure(config):
+    if not config.pluginmanager.has_plugin("failure-tagger"):
+        config.pluginmanager.register(FailureTagger(config), "failure-tagger")
+
+    if config.pluginmanager.has_plugin("storage-reporter"):
+        return
+    config.pluginmanager.register(TestinfraStorageReporter(config), "storage-reporter")
