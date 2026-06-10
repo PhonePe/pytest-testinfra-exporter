@@ -2,6 +2,44 @@
 
 Backend-pluggable pytest reporting plugin with preserved `pytest-testinfra` host parsing behavior.
 
+## Installation
+
+From the `pytest-mariadb-reporter` directory, install the plugin in editable mode:
+
+```bash
+pip install -e .
+```
+
+If you are standing one level above this directory, use:
+
+```bash
+pip install -e ./pytest-mariadb-reporter
+```
+
+Pytest will auto-discover the plugin through the package's `pytest11` entry point, so no `conftest.py` changes are required.
+
+Install a database driver if you plan to use a backend:
+
+```bash
+pip install -e ".[mariadb]"
+```
+
+or:
+
+```bash
+pip install -e ".[postgres]"
+```
+
+## Usage
+
+Once installed, enable reporting directly from the pytest command line:
+
+```bash
+pytest --mariadb-report --report-backend=mariadb
+```
+
+The plugin is loaded automatically during pytest startup.
+
 ## Overview
 
 This project now follows a **Strategy + Adapter** architecture:

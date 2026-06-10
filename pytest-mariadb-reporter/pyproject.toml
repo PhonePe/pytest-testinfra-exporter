@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytest-mariadb-reporter"
+version = "0.1.0"
+description = "Pytest plugin that reports testinfra results to MariaDB or PostgreSQL backends."
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.9"
+dependencies = [
+    "pytest>=7.0",
+    "PyYAML>=6.0",
+]
+keywords = ["pytest", "plugin", "testinfra", "mariadb", "postgres"]
+classifiers = [
+    "Framework :: Pytest",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.entry-points.pytest11]
+pytest_mariadb_reporter = "pytest_mariadb_reporter"
+
+[project.optional-dependencies]
+mariadb = ["PyMySQL>=1.1"]
+postgres = ["psycopg2-binary>=2.9"]
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+    "pytest_mariadb_reporter",
+    "pytest_mariadb_reporter.backends",
+]
+
+[tool.setuptools.package-dir]
+pytest_mariadb_reporter = "."
+"pytest_mariadb_reporter.backends" = "backends"
+
+[tool.setuptools.package-data]
+pytest_mariadb_reporter = [
+    "failure_mapper/*.yaml",
+    "schema/*.sql",
+]
