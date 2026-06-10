@@ -1,3 +1,14 @@
+"""Core pytest plugin with backend-agnostic reporting lifecycle.
+
+This module contains the pytest hooks and testinfra-specific parsing logic.
+Storage concerns are delegated to a backend strategy implementing
+:class:`AbstractStorageBackend`.
+
+The testinfra host and node-id parsing behavior is intentionally preserved.
+"""
+
+from __future__ import annotations
+
 import datetime as dt
 import hashlib
 import os
@@ -15,14 +26,26 @@ from .backends.mariadb import MariaDBBackend
 from .models import MarkerDef, TestResultRecord, TestRunSummary
 
 
+#: Fixed offset timezone for IST used when persisting naive datetimes.
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 
 
-def _istnow_naive():
+def _istnow_naive() -> dt.datetime:
+    """Return current wall-clock time in IST as naive datetime.
+
+    :return: Current IST datetime with ``tzinfo=None``.
+    """
+
     return dt.datetime.now(IST).replace(tzinfo=None)
 
 
 def _epoch_to_ist_naive(value):
+    """Convert epoch seconds to naive IST datetime.
+
+    :param value: POSIX epoch timestamp.
+    :return: Naive IST datetime, or ``None`` if input is ``None``.
+    """
+
     if value is None:
         return None
     return dt.datetime.fromtimestamp(value, tz=dt.timezone.utc).astimezone(IST).replace(
@@ -31,10 +54,25 @@ def _epoch_to_ist_naive(value):
 
 
 def _canonical_nodeid(nodeid):
+    """Strip parametrization suffix from a pytest node id.
+
+    :param nodeid: Full pytest node id.
+    :return: Node id without ``[...]`` suffix.
+    """
+
     return nodeid.split("[", 1)[0]
 
 
 def _test_uid(canonical_nodeid, test_name, test_suite, test_class):
+    """Build stable SHA-1 identifier for a test identity tuple.
+
+    :param canonical_nodeid: Canonical node id.
+    :param test_name: Normalized test name.
+    :param test_suite: Test module path.
+    :param test_class: Test class name.
+    :return: SHA-1 hex digest.
+    """
+
     payload = "|".join(
         [
             str(canonical_nodeid or ""),
@@ -47,6 +85,12 @@ def _test_uid(canonical_nodeid, test_name, test_suite, test_class):
 
 
 def _is_backend_selector(value):
+    """Check if value starts with a known testinfra backend scheme.
+
+    :param value: Candidate value.
+    :return: ``True`` when value looks like ``salt://...`` etc.
+    """
+
     if value is None:
         return False
     text = str(value).strip()
@@ -59,6 +103,12 @@ def _is_backend_selector(value):
 
 
 def _contains_backend_selector(text):
+    """Check if text contains a testinfra backend selector substring.
+
+    :param text: Candidate text.
+    :return: ``True`` when any supported backend URI appears in text.
+    """
+
     value = str(text or "")
     return bool(
         re.search(r"(?:salt|ssh|paramiko|docker|podman|local|ansible|chroot)://", value)
@@ -66,6 +116,12 @@ def _contains_backend_selector(text):
 
 
 def _has_dash_after_phonepe(text):
+    """Return whether a dash exists after the last ``.phonepe`` token.
+
+    :param text: Candidate text.
+    :return: ``True`` when suffix includes ``-`` after ``.phonepe``.
+    """
+
     value = str(text or "")
     idx = value.rfind(".phonepe")
     if idx == -1:
@@ -74,6 +130,14 @@ def _has_dash_after_phonepe(text):
 
 
 def _display_name_from_raw(raw_name):
+    """Normalize pytest item name to display name.
+
+    This preserves the existing testinfra-specific normalization behavior.
+
+    :param raw_name: Raw item name.
+    :return: Normalized display name.
+    """
+
     text = str(raw_name or "").strip()
     if not text:
         return text
@@ -105,6 +169,13 @@ def _display_name_from_raw(raw_name):
 
 
 def _normalized_test_name(item, nodeid):
+    """Resolve normalized test name from item or node id.
+
+    :param item: Pytest item when available.
+    :param nodeid: Full pytest node id fallback.
+    :return: Display name.
+    """
+
     item_name = getattr(item, "name", None) if item is not None else None
     if item_name:
         return _display_name_from_raw(item_name)
@@ -114,6 +185,12 @@ def _normalized_test_name(item, nodeid):
 
 
 def _normalize_marker_value(value):
+    """Normalize marker argument to stripped string or ``None``.
+
+    :param value: Marker raw value.
+    :return: Normalized value.
+    """
+
     if value is None:
         return None
 
@@ -122,6 +199,14 @@ def _normalize_marker_value(value):
 
 
 def _extract_item_markers(item):
+    """Extract normalized marker definitions from pytest item.
+
+    ``parametrize`` marker is intentionally excluded.
+
+    :param item: Pytest item.
+    :return: List of :class:`MarkerDef`.
+    """
+
     markers: List[MarkerDef] = []
     seen = set()
     excluded_marker_names = {"parametrize"}
@@ -158,6 +243,12 @@ def _extract_item_markers(item):
 
 
 def _is_concrete_host_value(value):
+    """Check if value is a concrete single host target.
+
+    :param value: Candidate host expression.
+    :return: ``True`` for non-glob single host values.
+    """
+
     if not value:
         return False
 
@@ -169,6 +260,12 @@ def _is_concrete_host_value(value):
 
 
 def _normalize_backend_target(value):
+    """Normalize backend URI/plain host to host string.
+
+    :param value: Backend URI or plain host.
+    :return: Normalized host or ``None`` when not concrete.
+    """
+
     if not value:
         return None
 
@@ -194,6 +291,12 @@ def _normalize_backend_target(value):
 
 
 def _extract_backend_host_from_nodeid(nodeid):
+    """Extract host from node id containing testinfra backend URI.
+
+    :param nodeid: Pytest node id.
+    :return: Normalized host or ``None``.
+    """
+
     if not nodeid:
         return None
 
@@ -213,11 +316,23 @@ def _extract_backend_host_from_nodeid(nodeid):
 
 
 def _default_failure_map_path():
+    """Return default failure map path.
+
+    :return: Absolute path to ``failure_mapper/failure_map.yaml``.
+    """
+
     package_root = os.path.dirname(__file__)
     return os.path.join(package_root, "failure_mapper", "failure_map.yaml")
 
 
 def _build_backend(backend_name: str) -> AbstractStorageBackend:
+    """Instantiate backend strategy by name.
+
+    :param backend_name: Backend selector string.
+    :return: Backend instance.
+    :raises ValueError: If backend name is unsupported.
+    """
+
     normalized = (backend_name or "mariadb").strip().lower()
     if normalized == "mariadb":
         return MariaDBBackend()
@@ -225,6 +340,11 @@ def _build_backend(backend_name: str) -> AbstractStorageBackend:
 
 
 def pytest_addoption(parser):
+    """Register CLI options for storage reporting.
+
+    :param parser: Pytest parser object.
+    """
+
     group = parser.getgroup("mariadb-reporting")
     group.addoption(
         "--mariadb-report",
@@ -264,7 +384,14 @@ def pytest_addoption(parser):
 
 
 class FailureTagger:
+    """Map failing/erroring tests to defect tags using YAML rules."""
+
     def __init__(self, config):
+        """Initialize failure tagger.
+
+        :param config: Pytest config object.
+        """
+
         self.config = config
         self._disabled_reason = None
         self._error_maps = []
@@ -273,20 +400,35 @@ class FailureTagger:
 
     @property
     def enabled(self):
+        """Return whether at least one valid map rule is loaded."""
+
         return bool(self._error_maps)
 
     def _disable(self, reason):
+        """Disable failure tagger and emit warning once.
+
+        :param reason: Disable reason.
+        """
+
         if not self._disabled_reason:
             warnings.warn("Failure tagger disabled: %s" % reason)
         self._disabled_reason = reason
         self._error_maps = []
 
     def _normalize_match_type(self, value):
+        """Normalize map match type.
+
+        :param value: Raw match type.
+        :return: ``exact`` or lowercased string.
+        """
+
         if not value:
             return "exact"
         return str(value).strip().lower()
 
     def _load_error_maps(self):
+        """Load and validate error maps from YAML file."""
+
         try:
             import yaml
         except Exception as exc:
@@ -361,6 +503,13 @@ class FailureTagger:
         self._error_maps = loaded_maps
 
     def tag_failure(self, status, text_parts):
+        """Return failure tag for failing/errored tests.
+
+        :param status: Test status.
+        :param text_parts: Failure text components.
+        :return: Defect name or ``None``.
+        """
+
         if status not in ("fail", "error"):
             return None
         if not self.enabled:
@@ -384,7 +533,14 @@ class FailureTagger:
 
 
 class TestinfraStorageReporter:
+    """Backend-agnostic pytest reporter with preserved testinfra parsing logic."""
+
     def __init__(self, config):
+        """Initialize reporter state.
+
+        :param config: Pytest config.
+        """
+
         self.config = config
         self.enabled = bool(config.getoption("--mariadb-report"))
         self._failure_tagger = config.pluginmanager.get_plugin("failure-tagger")
@@ -399,15 +555,35 @@ class TestinfraStorageReporter:
 
     @property
     def backend(self) -> Optional[AbstractStorageBackend]:
+        """Return active backend strategy instance."""
+
         return self._backend
 
     def _disable(self, reason):
+        """Disable reporter and emit warning.
+
+        :param reason: Disable reason.
+        """
+
         if self.enabled:
             warnings.warn("Storage pytest reporter disabled: %s" % reason)
         self.enabled = False
         self._disabled_reason = reason
 
     def _resolve_host_name(self, item):
+        """Resolve testinfra host name with existing precedence rules.
+
+        Resolution order is unchanged:
+
+        1. ``item.funcargs['host'].backend.get_hostname()``
+        2. Node-id backend URI parsing
+        3. ``--hosts`` option normalization
+        4. Local runner hostname
+
+        :param item: Pytest item.
+        :return: Host name.
+        """
+
         host_obj = item.funcargs.get("host") if hasattr(item, "funcargs") else None
         if host_obj is not None:
             backend = getattr(host_obj, "backend", None)
@@ -431,6 +607,12 @@ class TestinfraStorageReporter:
         return socket.gethostname()
 
     def _extract_sections(self, report):
+        """Extract captured stdout/stderr/log sections from pytest report.
+
+        :param report: Pytest report object.
+        :return: Dict with captured section text.
+        """
+
         section_map = {
             "captured_stdout": [],
             "captured_stderr": [],
@@ -456,6 +638,12 @@ class TestinfraStorageReporter:
         }
 
     def _combined_longrepr(self, reports):
+        """Combine ``longreprtext`` from reports with phase prefixes.
+
+        :param reports: Phase report list.
+        :return: Combined traceback text or ``None``.
+        """
+
         longrepr_chunks = []
         for report in reports:
             text = getattr(report, "longreprtext", None)
@@ -466,6 +654,14 @@ class TestinfraStorageReporter:
         return "\n\n".join(longrepr_chunks)
 
     def _determine_status(self, setup_report, call_report, teardown_report):
+        """Determine final result status from setup/call/teardown phases.
+
+        :param setup_report: Setup phase report.
+        :param call_report: Call phase report.
+        :param teardown_report: Teardown phase report.
+        :return: Canonical status string.
+        """
+
         if call_report is not None:
             if hasattr(call_report, "wasxfail"):
                 if call_report.skipped:
@@ -493,6 +689,11 @@ class TestinfraStorageReporter:
         return "error"
 
     def pytest_sessionstart(self, session):
+        """Initialize backend and create run start record.
+
+        :param session: Pytest session.
+        """
+
         if not self.enabled:
             return
 
@@ -517,6 +718,12 @@ class TestinfraStorageReporter:
 
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(self, item, call):
+        """Capture metadata once per node id during report generation.
+
+        :param item: Pytest item.
+        :param call: Pytest call object.
+        """
+
         outcome = yield
         report = outcome.get_result()
 
@@ -540,6 +747,11 @@ class TestinfraStorageReporter:
             }
 
     def pytest_runtest_logreport(self, report):
+        """Accumulate phase reports and emit one normalized result at teardown.
+
+        :param report: Pytest phase report.
+        """
+
         if not self.enabled:
             return
 
@@ -664,6 +876,12 @@ class TestinfraStorageReporter:
         )
 
     def pytest_sessionfinish(self, session, exitstatus):
+        """Flush accumulated records and finalize run summary via backend.
+
+        :param session: Pytest session.
+        :param exitstatus: Pytest exit code.
+        """
+
         if not self.enabled:
             return
 
@@ -689,6 +907,13 @@ class TestinfraStorageReporter:
         self._backend.session_finish(self._run_id, counters)
 
     def pytest_terminal_summary(self, terminalreporter, exitstatus, config):
+        """Print storage reporter summary in pytest terminal output.
+
+        :param terminalreporter: Pytest terminal reporter.
+        :param exitstatus: Pytest exit code.
+        :param config: Pytest config.
+        """
+
         if not config.getoption("--mariadb-report"):
             return
 
@@ -714,6 +939,11 @@ class TestinfraStorageReporter:
 
 
 def pytest_configure(config):
+    """Register plugin components with pytest plugin manager.
+
+    :param config: Pytest config.
+    """
+
     if not config.pluginmanager.has_plugin("failure-tagger"):
         config.pluginmanager.register(FailureTagger(config), "failure-tagger")
 

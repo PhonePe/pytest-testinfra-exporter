@@ -1,3 +1,18 @@
+"""MariaDB storage backend adapter.
+
+This module provides :class:`MariaDBBackend`, a concrete implementation of
+:class:`pytest_mariadb_reporter.backend.AbstractStorageBackend`.
+
+The adapter owns all MariaDB-specific concerns:
+
+- PyMySQL import and connection management.
+- Schema bootstrap/migration SQL execution.
+- Upsert logic for hosts, tests, and test results.
+- Marker normalization persistence.
+"""
+
+from __future__ import annotations
+
 import datetime as dt
 import warnings
 from typing import Dict, List, Optional
@@ -6,14 +21,26 @@ from ..backend import AbstractStorageBackend
 from ..models import MarkerDef, TestResultRecord, TestRunSummary
 
 
+#: Fixed IST timezone used for naive datetime persistence.
 IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
 
 
 def _istnow_naive() -> dt.datetime:
+    """Return current IST wall clock as naive datetime.
+
+    :return: Current datetime in IST with ``tzinfo=None``.
+    """
+
     return dt.datetime.now(IST).replace(tzinfo=None)
 
 
 def _normalize_marker_value(value):
+    """Normalize a marker field to stripped string or ``None``.
+
+    :param value: Input marker value.
+    :return: Stripped string value or ``None``.
+    """
+
     if value is None:
         return None
     text = str(value).strip()
@@ -21,7 +48,15 @@ def _normalize_marker_value(value):
 
 
 class MariaDBBackend(AbstractStorageBackend):
+    """MariaDB adapter that persists test run metadata and results.
+
+    The instance can disable itself on unrecoverable backend errors while keeping
+    pytest execution unaffected.
+    """
+
     def __init__(self):
+        """Initialize backend state."""
+
         self.config = None
         self._connection = None
         self._enabled = True
@@ -29,23 +64,43 @@ class MariaDBBackend(AbstractStorageBackend):
 
     @property
     def enabled(self) -> bool:
+        """Return whether backend operations are enabled."""
+
         return self._enabled
 
     @property
     def disabled_reason(self) -> Optional[str]:
+        """Return backend disable reason, if any."""
+
         return self._disabled_reason
 
     def initialize(self, config) -> None:
+        """Initialize backend and open MariaDB connection.
+
+        :param config: Pytest config object.
+        """
+
         self.config = config
         self._ensure_connection()
 
     def _disable(self, reason: str) -> None:
+        """Disable backend and emit one warning.
+
+        :param reason: Human-readable disable reason.
+        """
+
         if self._enabled:
             warnings.warn("MariaDB backend disabled: %s" % reason)
         self._enabled = False
         self._disabled_reason = reason
 
     def _ensure_connection(self) -> None:
+        """Create DB connection lazily when enabled.
+
+        PyMySQL is imported lazily so plugin loading does not fail when the
+        dependency is absent and reporting is not used.
+        """
+
         if not self._enabled:
             return
 
@@ -72,6 +127,11 @@ class MariaDBBackend(AbstractStorageBackend):
             self._disable("Failed connecting to MariaDB: %s" % exc)
 
     def _init_schema(self, cursor) -> None:
+        """Run idempotent schema creation and migration statements.
+
+        :param cursor: Open DB cursor.
+        """
+
         statements = [
             """
             CREATE TABLE IF NOT EXISTS hosts (
@@ -261,6 +321,11 @@ class MariaDBBackend(AbstractStorageBackend):
             cursor.execute(statement)
 
     def session_start(self, run_summary: TestRunSummary) -> None:
+        """Persist test run start metadata.
+
+        :param run_summary: Normalized run summary model.
+        """
+
         if not self._enabled:
             return
 
@@ -296,6 +361,13 @@ class MariaDBBackend(AbstractStorageBackend):
             cursor.close()
 
     def _upsert_host(self, cursor, host_name: str) -> int:
+        """Upsert host and return ``hosts.id``.
+
+        :param cursor: Open DB cursor.
+        :param host_name: Hostname.
+        :return: Host primary key.
+        """
+
         now = _istnow_naive()
         cursor.execute(
             """
@@ -308,6 +380,13 @@ class MariaDBBackend(AbstractStorageBackend):
         return int(cursor.lastrowid)
 
     def _upsert_test(self, cursor, row: TestResultRecord) -> int:
+        """Upsert test identity and return ``tests.id``.
+
+        :param cursor: Open DB cursor.
+        :param row: Test result record.
+        :return: Test primary key.
+        """
+
         cursor.execute(
             """
             INSERT INTO tests (test_uid, canonical_nodeid, test_name, test_suite, test_class)
@@ -330,6 +409,16 @@ class MariaDBBackend(AbstractStorageBackend):
         return int(cursor.lastrowid)
 
     def _insert_result(self, cursor, run_id: str, host_id: int, test_id: int, row: TestResultRecord) -> int:
+        """Insert or update test result and return ``test_results.id``.
+
+        :param cursor: Open DB cursor.
+        :param run_id: Session run id.
+        :param host_id: Host FK id.
+        :param test_id: Test FK id.
+        :param row: Result payload.
+        :return: Result primary key.
+        """
+
         cursor.execute(
             """
             INSERT INTO test_results (
@@ -382,6 +471,13 @@ class MariaDBBackend(AbstractStorageBackend):
         return int(cursor.lastrowid)
 
     def _replace_result_markers(self, cursor, test_result_id: int, markers: List[MarkerDef]) -> None:
+        """Replace result marker rows for a test result.
+
+        :param cursor: Open DB cursor.
+        :param test_result_id: ``test_results.id``.
+        :param markers: Marker definitions.
+        """
+
         cursor.execute(
             """
             DELETE FROM test_result_markers
@@ -419,6 +515,12 @@ class MariaDBBackend(AbstractStorageBackend):
         )
 
     def save_results(self, run_id: str, results: List[TestResultRecord]) -> None:
+        """Persist result records in a transaction.
+
+        :param run_id: Session run id.
+        :param results: Result records.
+        """
+
         if not self._enabled:
             return
 
@@ -448,8 +550,16 @@ class MariaDBBackend(AbstractStorageBackend):
         except Exception as exc:
             self._connection.rollback()
             warnings.warn("MariaDB backend failed writing results: %s" % exc)
+        finally:
+            cursor.close()
 
     def session_finish(self, run_id: str, counters: dict) -> None:
+        """Update run counters and close backend resources.
+
+        :param run_id: Session run id.
+        :param counters: Final run counters.
+        """
+
         if not self._enabled:
             return
 
