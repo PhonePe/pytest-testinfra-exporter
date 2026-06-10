@@ -4,7 +4,6 @@ This module contains the pytest hooks and testinfra-specific parsing logic.
 Storage concerns are delegated to a backend strategy implementing
 :class:`AbstractStorageBackend`.
 
-The testinfra host and node-id parsing behavior is intentionally preserved.
 """
 
 from __future__ import annotations
@@ -103,86 +102,42 @@ def _is_backend_selector(value):
     )
 
 
-def _contains_backend_selector(text):
-    """Check if text contains a testinfra backend selector substring.
+def _normalized_test_name(item, nodeid, resolved_host=None):
+    """Resolve normalized test name from node id and resolved host.
 
-    :param text: Candidate text.
-    :return: ``True`` when any supported backend URI appears in text.
-    """
-
-    value = str(text or "")
-    return bool(
-        re.search(r"(?:salt|ssh|paramiko|docker|podman|local|ansible|chroot)://", value)
-    )
-
-
-def _has_dash_after_phonepe(text):
-    """Return whether a dash exists after the last ``.phonepe`` token.
-
-    :param text: Candidate text.
-    :return: ``True`` when suffix includes ``-`` after ``.phonepe``.
-    """
-
-    value = str(text or "")
-    idx = value.rfind(".phonepe")
-    if idx == -1:
-        return True
-    return "-" in value[idx + len(".phonepe") :]
-
-
-def _display_name_from_raw(raw_name):
-    """Normalize pytest item name to display name.
-
-    This preserves the existing testinfra-specific normalization behavior.
-
-    :param raw_name: Raw item name.
-    :return: Normalized display name.
-    """
-
-    text = str(raw_name or "").strip()
-    if not text:
-        return text
-
-    had_brackets = False
-    if "[" in text and text.endswith("]"):
-        had_brackets = True
-        base, bracket = text[:-1].split("[", 1)
-        text = "%s-%s" % (base, bracket)
-
-    if "-" not in text:
-        return text
-
-    base_name = text.split("-", 1)[0]
-
-    if ".phonepe" in text and not _has_dash_after_phonepe(text):
-        return base_name
-
-    if _contains_backend_selector(text) and not had_brackets:
-        return base_name
-
-    if _contains_backend_selector(text):
-        last_segment = text.rsplit("-", 1)[-1]
-        if not last_segment or "://" in last_segment or last_segment.endswith(">"):
-            return base_name
-        return "%s-%s" % (base_name, last_segment)
-
-    return text
-
-
-def _normalized_test_name(item, nodeid):
-    """Resolve normalized test name from item or node id.
+    This intelligently strips the testinfra host URI from the pytest 
+    parametrization brackets, leaving only actual test parameters.
 
     :param item: Pytest item when available.
     :param nodeid: Full pytest node id fallback.
+    :param resolved_host: Resolved testinfra host name.
     :return: Display name.
     """
-
-    item_name = getattr(item, "name", None) if item is not None else None
-    if item_name:
-        return _display_name_from_raw(item_name)
-
-    node_suffix = str(nodeid).rsplit("::", 1)[-1]
-    return _display_name_from_raw(node_suffix)
+    
+    base_node = str(nodeid).rsplit("::", 1)[-1]
+    
+    if "[" not in base_node or not base_node.endswith("]"):
+        return base_node
+        
+    base_name, bracket = base_node[:-1].split("[", 1)
+    
+    if resolved_host:
+        for scheme in ("salt", "ssh", "paramiko", "docker", "podman", "local", "ansible", "chroot"):
+            target = f"{scheme}://{resolved_host}"
+            if target in bracket:
+                bracket = bracket.replace(target, "")
+                break
+        
+        # Fallback if host was parametrized without a URI scheme
+        if resolved_host in bracket:
+            bracket = bracket.replace(resolved_host, "")
+            
+    # Clean up parametrization boundary dashes (e.g. "-riemann-rmq-hwm" -> "riemann-rmq-hwm")
+    bracket = bracket.strip("-")
+    
+    if bracket:
+        return f"{base_name}-{bracket}"
+    return base_name
 
 
 def _normalize_marker_value(value):
@@ -350,7 +305,6 @@ def pytest_addoption(parser):
 
     group = parser.getgroup("mariadb-reporting")
     group.addoption(
-        "--storage-report",
         "--mariadb-report",
         action="store_true",
         default=False,
@@ -557,7 +511,7 @@ class TestinfraStorageReporter:
         """
 
         self.config = config
-        self.enabled = bool(config.getoption("--storage-report"))
+        self.enabled = bool(config.getoption("--mariadb-report"))
         self._failure_tagger = config.pluginmanager.get_plugin("failure-tagger")
         self._disabled_reason = None
         self._backend_name = config.getoption("--report-backend")
@@ -748,7 +702,11 @@ class TestinfraStorageReporter:
         nodeid = report.nodeid
         if nodeid not in self._metadata_by_nodeid:
             canonical_nodeid = _canonical_nodeid(nodeid)
-            test_name = _normalized_test_name(item, nodeid)
+            
+            # Pass the dynamically resolved testinfra host into the normalizer
+            host_name = self._resolve_host_name(item)
+            test_name = _normalized_test_name(item, nodeid, resolved_host=host_name)
+            
             test_suite = item.location[0] if hasattr(item, "location") else None
             test_class = item.cls.__name__ if getattr(item, "cls", None) else None
             self._metadata_by_nodeid[nodeid] = {
@@ -757,7 +715,7 @@ class TestinfraStorageReporter:
                 "test_name": test_name,
                 "test_suite": test_suite,
                 "test_class": test_class,
-                "host_name": self._resolve_host_name(item),
+                "host_name": host_name,
                 "markers": _extract_item_markers(item),
             }
 
@@ -929,7 +887,7 @@ class TestinfraStorageReporter:
         :param config: Pytest config.
         """
 
-        if not config.getoption("--storage-report"):
+        if not config.getoption("--mariadb-report"):
             return
 
         terminalreporter.write_sep("-", "Storage reporter")
