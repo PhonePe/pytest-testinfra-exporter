@@ -14,6 +14,7 @@ The adapter owns all PostgreSQL-specific concerns:
 from __future__ import annotations
 
 import datetime as dt
+import os
 import warnings
 from typing import Dict, List, Optional
 
@@ -120,119 +121,22 @@ class PostgresBackend(AbstractStorageBackend):
             self._disable("Failed connecting to PostgreSQL: %s" % exc)
 
     def _init_schema(self, cursor) -> None:
-        """Run idempotent schema creation and migration statements.
+        """Run idempotent schema creation from ``schema/postgres.sql``.
 
         :param cursor: Open DB cursor.
         """
 
-        statements = [
-            """
-            CREATE TABLE IF NOT EXISTS hosts (
-              id BIGSERIAL PRIMARY KEY,
-              host_name VARCHAR(255) NOT NULL UNIQUE,
-              is_active BOOLEAN NOT NULL DEFAULT TRUE,
-              first_seen TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-              last_seen TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
-            )
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS tests (
-              id BIGSERIAL PRIMARY KEY,
-              test_uid CHAR(40) NOT NULL UNIQUE,
-              canonical_nodeid VARCHAR(255) NOT NULL,
-              test_name VARCHAR(255) NOT NULL,
-              test_suite VARCHAR(1024) NULL,
-              test_class VARCHAR(255) NULL
-            )
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_tests_canonical_nodeid
-            ON tests (canonical_nodeid)
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS test_runs (
-              run_id CHAR(36) PRIMARY KEY,
-              trigger_source VARCHAR(64) NOT NULL DEFAULT 'local',
-              suite_version VARCHAR(255) NULL,
-              started_at TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL,
-              finished_at TIMESTAMP(6) WITHOUT TIME ZONE NULL,
-              total_tests INT NOT NULL DEFAULT 0,
-              passed_count INT NOT NULL DEFAULT 0,
-              failed_count INT NOT NULL DEFAULT 0,
-              skipped_count INT NOT NULL DEFAULT 0,
-              errored_count INT NOT NULL DEFAULT 0
-            )
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_test_runs_started
-            ON test_runs (started_at)
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS test_results (
-              id BIGSERIAL PRIMARY KEY,
-              run_id CHAR(36) NOT NULL REFERENCES test_runs(run_id) ON DELETE CASCADE,
-              host_id BIGINT NOT NULL REFERENCES hosts(id),
-              test_id BIGINT NOT NULL REFERENCES tests(id),
-              status VARCHAR(16) NOT NULL,
-              failure_tag VARCHAR(255) NULL,
-              duration_ms INT NOT NULL DEFAULT 0,
-              started_at TIMESTAMP(6) WITHOUT TIME ZONE NULL,
-              finished_at TIMESTAMP(6) WITHOUT TIME ZONE NULL,
-              error_type VARCHAR(128) NULL,
-              error_message TEXT NULL,
-              full_trace TEXT NULL,
-              captured_log TEXT NULL,
-              captured_stdout TEXT NULL,
-              captured_stderr TEXT NULL,
-              CONSTRAINT uq_test_results_run_host_test UNIQUE (run_id, host_id, test_id),
-              CONSTRAINT chk_test_results_status CHECK (status IN ('pass', 'fail', 'skipped', 'error', 'xfail', 'xpass'))
-            )
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_test_results_run_host
-            ON test_results (run_id, host_id)
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_test_results_host_finished
-            ON test_results (host_id, finished_at)
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_test_results_host_status_finished
-            ON test_results (host_id, status, finished_at)
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_test_results_test_finished
-            ON test_results (test_id, finished_at)
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_test_results_status_finished
-            ON test_results (status, finished_at)
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_test_results_failure_tag_finished
-            ON test_results (failure_tag, finished_at)
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS test_result_markers (
-              id BIGSERIAL PRIMARY KEY,
-              test_result_id BIGINT NOT NULL REFERENCES test_results(id) ON DELETE CASCADE,
-              marker_name VARCHAR(128) NOT NULL,
-              marker_value VARCHAR(512) NULL,
-              CONSTRAINT uq_result_marker_name_value UNIQUE (test_result_id, marker_name, marker_value)
-            )
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_result_markers_name_value
-            ON test_result_markers (marker_name, marker_value)
-            """,
-            """
-            CREATE INDEX IF NOT EXISTS idx_result_markers_name
-            ON test_result_markers (marker_name)
-            """,
-        ]
+        schema_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "schema", "postgres.sql")
+        if not os.path.exists(schema_path):
+            raise FileNotFoundError("PostgreSQL schema file not found: %s" % schema_path)
 
-        for statement in statements:
-            cursor.execute(statement)
+        with open(schema_path, "r", encoding="utf-8") as handle:
+            schema_sql = handle.read()
+
+        for statement in schema_sql.split(";"):
+            sql = statement.strip()
+            if sql:
+                cursor.execute(sql)
 
     def session_start(self, run_summary: TestRunSummary) -> None:
         """Persist test run start metadata.
