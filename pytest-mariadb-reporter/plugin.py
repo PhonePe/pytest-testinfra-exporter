@@ -23,6 +23,7 @@ import pytest
 
 from .backend import AbstractStorageBackend
 from .backends.mariadb import MariaDBBackend
+from .backends.postgres import PostgresBackend
 from .models import MarkerDef, TestResultRecord, TestRunSummary
 
 
@@ -336,7 +337,9 @@ def _build_backend(backend_name: str) -> AbstractStorageBackend:
     normalized = (backend_name or "mariadb").strip().lower()
     if normalized == "mariadb":
         return MariaDBBackend()
-    raise ValueError("Unsupported backend '%s'. Supported values: mariadb" % backend_name)
+    if normalized == "postgres":
+        return PostgresBackend()
+    raise ValueError("Unsupported backend '%s'. Supported values: mariadb, postgres" % backend_name)
 
 
 def pytest_addoption(parser):
@@ -356,7 +359,7 @@ def pytest_addoption(parser):
         "--report-backend",
         action="store",
         default="mariadb",
-        help="Storage backend for reporting (currently supported: mariadb).",
+        help="Storage backend for reporting (currently supported: mariadb, postgres).",
     )
     group.addoption("--mariadb-host", action="store", default="localhost")
     group.addoption("--mariadb-port", action="store", type=int, default=3306)
@@ -380,6 +383,17 @@ def pytest_addoption(parser):
         action="store",
         default=_default_failure_map_path(),
         help="Path to YAML map used for tagging failed/error tests.",
+    )
+    group.addoption("--postgres-host", action="store", default="localhost")
+    group.addoption("--postgres-port", action="store", type=int, default=5432)
+    group.addoption("--postgres-user", action="store", default="postgres")
+    group.addoption("--postgres-password", action="store", default="password")
+    group.addoption("--postgres-database", action="store", default="testinfra_reports")
+    group.addoption(
+        "--postgres-init-schema",
+        action="store_true",
+        default=False,
+        help="Create/update required PostgreSQL schema before sending reports.",
     )
 
 

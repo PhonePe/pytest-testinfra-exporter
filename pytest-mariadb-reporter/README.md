@@ -9,6 +9,7 @@ This project now follows a **Strategy + Adapter** architecture:
 - Core pytest hooks are implemented in `plugin.py`.
 - Storage is delegated through `AbstractStorageBackend` in `backend.py`.
 - MariaDB support is implemented as `MariaDBBackend` in `backends/mariadb.py`.
+- PostgreSQL support is implemented as `PostgresBackend` in `backends/postgres.py`.
 - Normalized payloads are represented by dataclasses in `models.py`.
 
 The testinfra-specific logic is intentionally unchanged (including parsing of `salt://`, `ssh://`, fixture host resolution, and nodeid parsing).
@@ -20,6 +21,7 @@ The testinfra-specific logic is intentionally unchanged (including parsing of `s
 - `models.py` — dataclasses used by the core reporter and backends.
 - `backend.py` — backend interface contract.
 - `backends/mariadb.py` — MariaDB adapter implementation.
+- `backends/postgres.py` — PostgreSQL adapter implementation.
 - `plugin.py` — pytest hooks, helper utilities, and failure tagging.
 - `schema/db.sql` — full MariaDB schema reset/apply script.
 - `failure_mapper/failure_map.yaml` — failure tag mapping rules.
@@ -61,7 +63,7 @@ pytest lifecycle hooks (plugin.py)
 | Option | Default | Description |
 |---|---|---|
 | `--mariadb-report` | `False` | Enable reporting pipeline. |
-| `--report-backend` | `mariadb` | Storage backend strategy selector. |
+| `--report-backend` | `mariadb` | Storage backend strategy selector (`mariadb`, `postgres`). |
 | `--mariadb-host` | `localhost` | MariaDB host. |
 | `--mariadb-port` | `3306` | MariaDB port. |
 | `--mariadb-user` | `testinfra_user` | MariaDB username. |
@@ -70,10 +72,18 @@ pytest lifecycle hooks (plugin.py)
 | `--mariadb-suite-version` | `None` | Suite version string (for example git SHA). |
 | `--mariadb-init-schema` | `False` | Run idempotent schema creation/migrations. |
 | `--mariadb-failure-map` | `failure_mapper/failure_map.yaml` | Failure tagging rules file. |
+| `--postgres-host` | `localhost` | PostgreSQL host. |
+| `--postgres-port` | `5432` | PostgreSQL port. |
+| `--postgres-user` | `postgres` | PostgreSQL username. |
+| `--postgres-password` | `password` | PostgreSQL password. |
+| `--postgres-database` | `testinfra_reports` | PostgreSQL database name. |
+| `--postgres-init-schema` | `False` | Run idempotent PostgreSQL schema creation. |
 
 ---
 
 ## Example usage
+
+### MariaDB
 
 ```bash
 pytest tests/ \
@@ -86,6 +96,32 @@ pytest tests/ \
   --mariadb-database testinfra_reports \
   --mariadb-suite-version "$(git rev-parse --short HEAD)" \
   --mariadb-init-schema
+```
+
+### PostgreSQL
+
+```bash
+pytest tests/ \
+  --mariadb-report \
+  --report-backend postgres \
+  --postgres-host 127.0.0.1 \
+  --postgres-port 5432 \
+  --postgres-user postgres \
+  --postgres-password password \
+  --postgres-database testinfra_reports \
+  --postgres-init-schema
+```
+
+---
+
+## Dependencies
+
+- MariaDB backend: `PyMySQL`
+- PostgreSQL backend: `psycopg2-binary`
+- Failure tagging: `PyYAML`
+
+```bash
+pip install PyMySQL psycopg2-binary pyyaml
 ```
 
 ---
@@ -157,6 +193,14 @@ MariaDB Backend
    :undoc-members:
    :show-inheritance:
 
+PostgreSQL Backend
+------------------
+
+.. automodule:: backends.postgres
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Plugin Core
 -----------
 
@@ -174,4 +218,4 @@ If package import paths are namespaced, replace module names accordingly (for ex
 
 - Timestamp persistence remains naive IST for compatibility with existing dashboards.
 - Existing testinfra host extraction behavior is preserved.
-- Current backend implementations: `mariadb`.
+- Current backend implementations: `mariadb`, `postgres`.
