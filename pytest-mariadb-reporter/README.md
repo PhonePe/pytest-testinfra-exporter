@@ -25,6 +25,9 @@ The testinfra-specific logic is intentionally unchanged (including parsing of `s
 - `plugin.py` — pytest hooks, helper utilities, and failure tagging.
 - `schema/db.sql` — full MariaDB schema reset/apply script.
 - `failure_mapper/failure_map.yaml` — failure tag mapping rules.
+- `docs/index.rst` — Sphinx documentation entry point.
+- `docs/usage.rst` — Sphinx usage guide.
+- `docs/api.rst` — Sphinx API reference.
 
 ---
 
@@ -137,11 +140,23 @@ Supported matching:
 
 ---
 
-## Sphinx documentation compatibility
+## Sphinx documentation
 
-Code has been updated with Sphinx/autodoc-compatible docstrings (`:param:`, `:return:`, module/class/method docs).
+A Sphinx-ready docs tree is now included:
 
-### Recommended `docs/conf.py`
+- `docs/index.rst`
+- `docs/usage.rst`
+- `docs/api.rst`
+
+These files use autodoc directives for:
+
+- `models`
+- `backend`
+- `plugin`
+- `backends.mariadb`
+- `backends.postgres`
+
+Example minimal `docs/conf.py`:
 
 ```python
 extensions = [
@@ -151,66 +166,11 @@ extensions = [
 ]
 ```
 
-### Recommended `docs/index.rst`
+Build docs from project root:
 
-```rst
-pytest-mariadb-reporter
-=======================
-
-.. toctree::
-   :maxdepth: 2
-
-   api
+```bash
+sphinx-build -b html docs docs/_build/html
 ```
-
-### Recommended `docs/api.rst`
-
-```rst
-API Reference
-=============
-
-Models
-------
-
-.. automodule:: models
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Backend Interface
------------------
-
-.. automodule:: backend
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-MariaDB Backend
----------------
-
-.. automodule:: backends.mariadb
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-PostgreSQL Backend
-------------------
-
-.. automodule:: backends.postgres
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Plugin Core
------------
-
-.. automodule:: plugin
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
-
-If package import paths are namespaced, replace module names accordingly (for example `pytest_mariadb_reporter.plugin`).
 
 ---
 
