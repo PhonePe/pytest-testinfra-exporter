@@ -133,10 +133,7 @@ class PostgresBackend(AbstractStorageBackend):
         with open(schema_path, "r", encoding="utf-8") as handle:
             schema_sql = handle.read()
 
-        for statement in schema_sql.split(";"):
-            sql = statement.strip()
-            if sql:
-                cursor.execute(sql)
+        cursor.execute(schema_sql)
 
     def session_start(self, run_summary: TestRunSummary) -> None:
         """Persist test run start metadata.
