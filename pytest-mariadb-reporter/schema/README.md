@@ -44,7 +44,7 @@ pytest infra/test_monitoring.py \
   --mariadb-user root \
   --mariadb-password root \
   --mariadb-database testinfra_reports \
-  --mariadb-failure-map ../failure_mapper/failure_map.yaml \
+  --failure-map ../failure_mapper/failure_map.yaml \
   --mariadb-trigger-source local \
   --mariadb-suite-version "manual-run" \
   --mariadb-init-schema
