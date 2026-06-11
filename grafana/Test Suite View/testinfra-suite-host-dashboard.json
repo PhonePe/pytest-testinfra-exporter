@@ -96,6 +96,14 @@
                 }
               },
               {
+                "id": "custom.tooltip.field",
+                "value": "failure_tag"
+              },
+              {
+                "id": "custom.tooltip.placement",
+                "value": "auto"
+              },
+              {
                 "id": "mappings",
                 "value": [
                   {
@@ -124,6 +132,18 @@
                     "type": "value"
                   }
                 ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failure_tag"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
               }
             ]
           }
@@ -163,7 +183,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\nORDER BY tr.finished_at DESC;",
+          "rawSql": "SELECT\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  CASE WHEN LOWER(tr.status) = 'fail' THEN tr.failure_tag END AS failure_tag,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\nORDER BY tr.finished_at DESC;",
           "refId": "A"
         }
       ],

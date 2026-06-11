@@ -118,7 +118,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
+          "rawSql": "SELECT\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  tr.failure_tag AS `Failure Tag`,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
           "refId": "A"
         }
       ],
