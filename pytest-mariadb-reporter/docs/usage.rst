@@ -22,9 +22,9 @@ CLI Options
 
 Core options:
 
-- ``--mariadb-report``
+- ``--storage-report``
 - ``--report-backend``
-- ``--mariadb-failure-map``
+- ``--failure-map``
 
 MariaDB options:
 
@@ -51,7 +51,7 @@ Example: MariaDB
 .. code-block:: bash
 
    pytest tests/ \
-     --mariadb-report \
+     --storage-report \
      --report-backend mariadb \
      --mariadb-host 127.0.0.1 \
      --mariadb-port 3306 \
@@ -66,7 +66,7 @@ Example: PostgreSQL
 .. code-block:: bash
 
    pytest tests/ \
-     --mariadb-report \
+     --storage-report \
      --report-backend postgres \
      --postgres-host 127.0.0.1 \
      --postgres-port 5432 \

@@ -305,6 +305,7 @@ def pytest_addoption(parser):
 
     group = parser.getgroup("mariadb-reporting")
     group.addoption(
+        "--storage-report",
         "--mariadb-report",
         action="store_true",
         default=False,
@@ -334,6 +335,7 @@ def pytest_addoption(parser):
         help="Create/update required MariaDB schema before sending reports.",
     )
     group.addoption(
+        "--failure-map",
         "--mariadb-failure-map",
         action="store",
         default=_default_failure_map_path(),
@@ -364,7 +366,7 @@ class FailureTagger:
         self.config = config
         self._disabled_reason = None
         self._error_maps = []
-        self._map_path = config.getoption("--mariadb-failure-map")
+        self._map_path = config.getoption("--failure-map")
         self._load_error_maps()
 
     @property
@@ -511,7 +513,7 @@ class TestinfraStorageReporter:
         """
 
         self.config = config
-        self.enabled = bool(config.getoption("--mariadb-report"))
+        self.enabled = bool(config.getoption("--storage-report"))
         self._failure_tagger = config.pluginmanager.get_plugin("failure-tagger")
         self._disabled_reason = None
         self._backend_name = config.getoption("--report-backend")
@@ -887,7 +889,7 @@ class TestinfraStorageReporter:
         :param config: Pytest config.
         """
 
-        if not config.getoption("--mariadb-report"):
+        if not config.getoption("--storage-report"):
             return
 
         terminalreporter.write_sep("-", "Storage reporter")
@@ -900,7 +902,7 @@ class TestinfraStorageReporter:
                 "failure_tagger_enabled: %s" % ("yes" if self._failure_tagger.enabled else "no")
             )
             terminalreporter.write_line(
-                "failure_map_path: %s" % self.config.getoption("--mariadb-failure-map")
+                "failure_map_path: %s" % self.config.getoption("--failure-map")
             )
             if self._failure_tagger._disabled_reason:
                 terminalreporter.write_line(

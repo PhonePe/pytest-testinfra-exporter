@@ -35,7 +35,7 @@ pip install -e ".[postgres]"
 Once installed, enable reporting directly from the pytest command line:
 
 ```bash
-pytest --mariadb-report --report-backend=mariadb
+pytest --storage-report --report-backend=mariadb
 ```
 
 The plugin is loaded automatically during pytest startup.
@@ -103,7 +103,7 @@ pytest lifecycle hooks (plugin.py)
 
 | Option | Default | Description |
 |---|---|---|
-| `--mariadb-report` | `False` | Enable reporting pipeline. |
+| `--storage-report` | `False` | Enable reporting pipeline. |
 | `--report-backend` | `mariadb` | Storage backend strategy selector (`mariadb`, `postgres`). |
 | `--mariadb-host` | `localhost` | MariaDB host. |
 | `--mariadb-port` | `3306` | MariaDB port. |
@@ -112,7 +112,7 @@ pytest lifecycle hooks (plugin.py)
 | `--mariadb-database` | `testinfra_reports` | MariaDB database name. |
 | `--mariadb-suite-version` | `None` | Suite version string (for example git SHA). |
 | `--mariadb-init-schema` | `False` | Run idempotent schema creation/migrations. |
-| `--mariadb-failure-map` | `failure_mapper/failure_map.yaml` | Failure tagging rules file. |
+| `--failure-map` | `failure_mapper/failure_map.yaml` | Failure tagging rules file. |
 | `--postgres-host` | `localhost` | PostgreSQL host. |
 | `--postgres-port` | `5432` | PostgreSQL port. |
 | `--postgres-user` | `postgres` | PostgreSQL username. |
@@ -128,7 +128,7 @@ pytest lifecycle hooks (plugin.py)
 
 ```bash
 pytest tests/ \
-  --mariadb-report \
+  --storage-report \
   --report-backend mariadb \
   --mariadb-host 127.0.0.1 \
   --mariadb-port 3306 \
@@ -143,7 +143,7 @@ pytest tests/ \
 
 ```bash
 pytest tests/ \
-  --mariadb-report \
+  --storage-report \
   --report-backend postgres \
   --postgres-host 127.0.0.1 \
   --postgres-port 5432 \
