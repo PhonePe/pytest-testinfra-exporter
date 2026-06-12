@@ -6,7 +6,7 @@ This module provides :class:`MariaDBBackend`, a concrete implementation of
 The adapter owns all MariaDB-specific concerns:
 
 - PyMySQL import and connection management.
-- Schema bootstrap/migration SQL execution.
+- Schema bootstrap SQL execution.
 - Upsert logic for hosts, tests, and test results.
 - Marker normalization persistence.
 """
@@ -127,12 +127,33 @@ class MariaDBBackend(AbstractStorageBackend):
             self._disable("Failed connecting to MariaDB: %s" % exc)
 
     def _init_schema(self, cursor) -> None:
-        """Run idempotent schema creation and migration statements.
+        """Reset and create the required MariaDB schema.
 
         :param cursor: Open DB cursor.
         """
 
         statements = [
+            """
+            SET FOREIGN_KEY_CHECKS = 0
+            """,
+            """
+            DROP TABLE IF EXISTS test_result_markers
+            """,
+            """
+            DROP TABLE IF EXISTS test_results
+            """,
+            """
+            DROP TABLE IF EXISTS test_runs
+            """,
+            """
+            DROP TABLE IF EXISTS tests
+            """,
+            """
+            DROP TABLE IF EXISTS hosts
+            """,
+            """
+            SET FOREIGN_KEY_CHECKS = 1
+            """,
             """
             CREATE TABLE IF NOT EXISTS hosts (
               id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -160,6 +181,7 @@ class MariaDBBackend(AbstractStorageBackend):
             """
             CREATE TABLE IF NOT EXISTS test_runs (
               run_id CHAR(36) NOT NULL,
+              run_name VARCHAR(255) NOT NULL,
               trigger_source VARCHAR(64) NOT NULL DEFAULT 'local',
               suite_version VARCHAR(255) NULL,
               started_at DATETIME(6) NOT NULL,
@@ -170,6 +192,7 @@ class MariaDBBackend(AbstractStorageBackend):
               skipped_count INT NOT NULL DEFAULT 0,
               errored_count INT NOT NULL DEFAULT 0,
               PRIMARY KEY (run_id),
+              KEY idx_test_runs_run_name (run_name),
               KEY idx_test_runs_started (started_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """,
@@ -221,105 +244,6 @@ class MariaDBBackend(AbstractStorageBackend):
         for statement in statements:
             cursor.execute(statement)
 
-        migrations = [
-            """
-            ALTER TABLE tests
-            ADD COLUMN IF NOT EXISTS test_uid CHAR(40) NULL AFTER id
-            """,
-            """
-            ALTER TABLE tests
-            DROP INDEX IF EXISTS uq_tests_canonical_nodeid
-            """,
-            """
-            ALTER TABLE tests
-            DROP INDEX IF EXISTS uq_tests_test_uid
-            """,
-            """
-            CREATE TEMPORARY TABLE IF NOT EXISTS tests_dedupe_map (
-                drop_id BIGINT UNSIGNED NOT NULL,
-                keep_id BIGINT UNSIGNED NOT NULL,
-                PRIMARY KEY (drop_id)
-            )
-            """,
-            """
-            TRUNCATE TABLE tests_dedupe_map
-            """,
-            """
-            INSERT INTO tests_dedupe_map (drop_id, keep_id)
-            SELECT t.id AS drop_id, k.keep_id
-            FROM tests t
-            JOIN (
-                SELECT
-                    SHA1(
-                        CONCAT_WS(
-                            '|',
-                            COALESCE(canonical_nodeid, ''),
-                            COALESCE(test_name, ''),
-                            COALESCE(test_suite, ''),
-                            COALESCE(test_class, '')
-                        )
-                    ) AS dedupe_key,
-                    MIN(id) AS keep_id
-                FROM tests
-                GROUP BY dedupe_key
-            ) k
-                ON SHA1(
-                         CONCAT_WS(
-                             '|',
-                             COALESCE(t.canonical_nodeid, ''),
-                             COALESCE(t.test_name, ''),
-                             COALESCE(t.test_suite, ''),
-                             COALESCE(t.test_class, '')
-                         )
-                     ) = k.dedupe_key
-            WHERE t.id <> k.keep_id
-            """,
-            """
-            UPDATE test_results tr
-            JOIN tests_dedupe_map m ON tr.test_id = m.drop_id
-            SET tr.test_id = m.keep_id
-            """,
-            """
-            DELETE t
-            FROM tests t
-            JOIN tests_dedupe_map m ON t.id = m.drop_id
-            """,
-            """
-            DROP TEMPORARY TABLE IF EXISTS tests_dedupe_map
-            """,
-            """
-            UPDATE tests
-            SET test_uid = SHA1(
-                CONCAT_WS(
-                    '|',
-                    COALESCE(canonical_nodeid, ''),
-                    COALESCE(test_name, ''),
-                    COALESCE(test_suite, ''),
-                    COALESCE(test_class, '')
-                )
-            )
-            """,
-            """
-            ALTER TABLE tests
-            MODIFY COLUMN test_uid CHAR(40) NOT NULL
-            """,
-            """
-            ALTER TABLE tests
-            DROP COLUMN IF EXISTS nodeid
-            """,
-            """
-            ALTER TABLE tests
-            ADD UNIQUE KEY IF NOT EXISTS uq_tests_test_uid (test_uid)
-            """,
-            """
-            ALTER TABLE tests
-            ADD KEY IF NOT EXISTS idx_tests_canonical_nodeid (canonical_nodeid)
-            """,
-        ]
-
-        for statement in migrations:
-            cursor.execute(statement)
-
     def session_start(self, run_summary: TestRunSummary) -> None:
         """Persist test run start metadata.
 
@@ -341,13 +265,15 @@ class MariaDBBackend(AbstractStorageBackend):
                 """
                 INSERT INTO test_runs (
                   run_id,
+                  run_name,
                   trigger_source,
                   suite_version,
                   started_at
-                ) VALUES (%s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     run_summary.run_id,
+                    run_summary.run_name,
                     run_summary.trigger_source,
                     run_summary.suite_version,
                     run_summary.started_at,

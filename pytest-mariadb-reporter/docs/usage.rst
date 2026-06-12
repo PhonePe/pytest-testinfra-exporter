@@ -24,6 +24,7 @@ Core options:
 
 - ``--storage-report``
 - ``--report-backend``
+- ``--run-name``
 - ``--failure-map``
 
 MariaDB options:
@@ -53,6 +54,7 @@ Example: MariaDB
    pytest tests/ \
      --storage-report \
      --report-backend mariadb \
+    --run-name "manual-run" \
      --mariadb-host 127.0.0.1 \
      --mariadb-port 3306 \
      --mariadb-user testinfra_user \

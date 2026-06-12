@@ -105,6 +105,7 @@ pytest lifecycle hooks (plugin.py)
 |---|---|---|
 | `--storage-report` | `False` | Enable reporting pipeline. |
 | `--report-backend` | `mariadb` | Storage backend strategy selector (`mariadb`, `postgres`). |
+| `--run-name` | Start datetime | Human-readable run name stored with the run. Defaults to `YYYY-MM-DD HH:MM:SS`. |
 | `--mariadb-host` | `localhost` | MariaDB host. |
 | `--mariadb-port` | `3306` | MariaDB port. |
 | `--mariadb-user` | `testinfra_user` | MariaDB username. |
@@ -130,6 +131,7 @@ pytest lifecycle hooks (plugin.py)
 pytest tests/ \
   --storage-report \
   --report-backend mariadb \
+   --run-name "manual-run" \
   --mariadb-host 127.0.0.1 \
   --mariadb-port 3306 \
   --mariadb-user testinfra_user \
