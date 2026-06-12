@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS tests (
 
 CREATE TABLE IF NOT EXISTS test_runs (
   run_id CHAR(36) NOT NULL,
+  run_name VARCHAR(255) NOT NULL,
   trigger_source VARCHAR(64) NOT NULL DEFAULT 'local',
   suite_version VARCHAR(255) NULL,
   started_at DATETIME(6) NOT NULL,
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS test_runs (
   skipped_count INT NOT NULL DEFAULT 0,
   errored_count INT NOT NULL DEFAULT 0,
   PRIMARY KEY (run_id),
+  KEY idx_test_runs_run_name (run_name),
   KEY idx_test_runs_started (started_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

@@ -281,6 +281,23 @@ def _default_failure_map_path():
     return os.path.join(package_root, "failure_mapper", "failure_map.yaml")
 
 
+def _resolve_run_name(config, started_at: dt.datetime) -> str:
+    """Resolve the human-readable run name for this pytest session.
+
+    :param config: Pytest config object.
+    :param started_at: Session start timestamp used for the default name.
+    :return: User supplied run name or timestamp fallback.
+    """
+
+    configured_name = config.getoption("--run-name")
+    if configured_name is not None:
+        run_name = str(configured_name).strip()
+        if run_name:
+            return run_name
+
+    return started_at.strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _build_backend(backend_name: str) -> AbstractStorageBackend:
     """Instantiate backend strategy by name.
 
@@ -316,6 +333,12 @@ def pytest_addoption(parser):
         action="store",
         default="mariadb",
         help="Storage backend for reporting (currently supported: mariadb, postgres).",
+    )
+    group.addoption(
+        "--run-name",
+        action="store",
+        default=None,
+        help="Optional human-readable name for the test run. Defaults to run start datetime.",
     )
     group.addoption("--mariadb-host", action="store", default="localhost")
     group.addoption("--mariadb-port", action="store", type=int, default=3306)
@@ -520,6 +543,7 @@ class TestinfraStorageReporter:
         self._backend: Optional[AbstractStorageBackend] = None
         self._run_id = str(uuid.uuid4())
         self._run_started_at = _istnow_naive()
+        self._run_name = _resolve_run_name(config, self._run_started_at)
         self._reports_by_nodeid: Dict[str, Dict[str, object]] = {}
         self._metadata_by_nodeid: Dict[str, Dict[str, object]] = {}
         self._result_rows: List[TestResultRecord] = []
@@ -681,6 +705,7 @@ class TestinfraStorageReporter:
 
         run_summary = TestRunSummary(
             run_id=self._run_id,
+            run_name=self._run_name,
             trigger_source=socket.getfqdn(),
             suite_version=self.config.getoption("--mariadb-suite-version"),
             started_at=self._run_started_at,
@@ -896,6 +921,7 @@ class TestinfraStorageReporter:
         terminalreporter.write_line("enabled: %s" % ("yes" if self.enabled else "no"))
         terminalreporter.write_line("backend: %s" % self._backend_name)
         terminalreporter.write_line("run_id: %s" % self._run_id)
+        terminalreporter.write_line("run_name: %s" % self._run_name)
         terminalreporter.write_line("results_buffered: %d" % len(self._result_rows))
         if self._failure_tagger is not None:
             terminalreporter.write_line(

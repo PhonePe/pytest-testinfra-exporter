@@ -1,5 +1,11 @@
 -- PostgreSQL schema for pytest-mariadb-reporter storage backend
--- Idempotent and safe to execute multiple times.
+-- Drops existing reporter tables before recreating schema.
+
+DROP TABLE IF EXISTS test_result_markers;
+DROP TABLE IF EXISTS test_results;
+DROP TABLE IF EXISTS test_runs;
+DROP TABLE IF EXISTS tests;
+DROP TABLE IF EXISTS hosts;
 
 CREATE TABLE IF NOT EXISTS hosts (
   id BIGSERIAL PRIMARY KEY,
@@ -23,6 +29,7 @@ ON tests (canonical_nodeid);
 
 CREATE TABLE IF NOT EXISTS test_runs (
   run_id CHAR(36) PRIMARY KEY,
+  run_name VARCHAR(255) NOT NULL,
   trigger_source VARCHAR(64) NOT NULL DEFAULT 'local',
   suite_version VARCHAR(255) NULL,
   started_at TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL,
@@ -36,6 +43,9 @@ CREATE TABLE IF NOT EXISTS test_runs (
 
 CREATE INDEX IF NOT EXISTS idx_test_runs_started
 ON test_runs (started_at);
+
+CREATE INDEX IF NOT EXISTS idx_test_runs_run_name
+ON test_runs (run_name);
 
 CREATE TABLE IF NOT EXISTS test_results (
   id BIGSERIAL PRIMARY KEY,

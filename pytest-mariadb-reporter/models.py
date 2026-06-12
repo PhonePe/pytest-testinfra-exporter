@@ -74,6 +74,7 @@ class TestRunSummary:
     """Represents lifecycle metadata for a pytest session.
 
     :param run_id: UUID string for the run.
+    :param run_name: Human-readable name for the run.
     :param trigger_source: Trigger host/FQDN.
     :param suite_version: Optional suite version (for example git SHA).
     :param started_at: Session start timestamp (naive IST).
@@ -86,6 +87,7 @@ class TestRunSummary:
     """
 
     run_id: str
+    run_name: str
     trigger_source: str
     suite_version: Optional[str]
     started_at: dt.datetime

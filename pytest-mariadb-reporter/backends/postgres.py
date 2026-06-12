@@ -153,13 +153,15 @@ class PostgresBackend(AbstractStorageBackend):
                 """
                 INSERT INTO test_runs (
                   run_id,
+                                    run_name,
                   trigger_source,
                   suite_version,
                   started_at
-                ) VALUES (%s, %s, %s, %s)
+                                ) VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     run_summary.run_id,
+                                        run_summary.run_name,
                     run_summary.trigger_source,
                     run_summary.suite_version,
                     run_summary.started_at,

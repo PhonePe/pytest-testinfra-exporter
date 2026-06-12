@@ -10,6 +10,7 @@ This document explains how to reset/apply the MariaDB schema and publish pytest 
 ## What gets stored
 
 - Host where test ran
+- Run identifier and human-readable run name
 - Test identity and status (`pass`, `fail`, `skipped`, `error`)
 - Auto-assigned failure tag (`failure_tag`) for `fail` / `error` tests based on `failure_mapper/failure_map.yaml`
 - Test timestamps and duration
@@ -44,6 +45,7 @@ pytest infra/test_monitoring.py \
   --mariadb-user root \
   --mariadb-password root \
   --mariadb-database testinfra_reports \
+  --run-name "manual-run" \
   --failure-map ../failure_mapper/failure_map.yaml \
   --mariadb-trigger-source local \
   --mariadb-suite-version "manual-run" \
