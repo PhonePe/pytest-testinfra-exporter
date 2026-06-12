@@ -59,7 +59,7 @@
                 "value": [
                   {
                     "title": "Open test logs",
-                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}&var-test_nodeid=${__value.raw}",
+                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}&var-test_id=${__data.fields[\"test_id\"]}",
                     "targetBlank": false
                   }
                 ]
@@ -138,6 +138,18 @@
           {
             "matcher": {
               "id": "byName",
+              "options": "test_id"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
               "options": "failure_tag"
             },
             "properties": [
@@ -183,7 +195,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  CASE WHEN LOWER(tr.status) = 'fail' THEN tr.failure_tag END AS failure_tag,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\nORDER BY tr.finished_at DESC;",
+          "rawSql": "SELECT\n  t.canonical_nodeid,\n  t.test_name,\n  t.id AS test_id,\n  LOWER(tr.status) AS status,\n  CASE WHEN LOWER(tr.status) = 'fail' THEN tr.failure_tag END AS failure_tag,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\nORDER BY tr.finished_at DESC;",
           "refId": "A"
         }
       ],

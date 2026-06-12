@@ -118,7 +118,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  tr.failure_tag AS `Failure Tag`,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
+          "rawSql": "SELECT\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  tr.failure_tag AS `Failure Tag`,\n  DATE_FORMAT(tr.started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at,\n  DATE_FORMAT(tr.finished_at, '%Y-%m-%d %H:%i:%s.%f') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND tr.test_id = ${test_id}\nLIMIT 1;",
           "refId": "A"
         }
       ],
@@ -178,7 +178,7 @@
           },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT\n  CONCAT_WS(\n    '\\n\\n',\n    CASE WHEN tr.full_trace IS NOT NULL THEN CONCAT('[full_trace]\\n', tr.full_trace) END,\n    CASE WHEN tr.captured_log IS NOT NULL THEN CONCAT('[captured_log]\\n', tr.captured_log) END,\n    CASE WHEN tr.captured_stdout IS NOT NULL THEN CONCAT('[captured_stdout]\\n', tr.captured_stdout) END,\n    CASE WHEN tr.captured_stderr IS NOT NULL THEN CONCAT('[captured_stderr]\\n', tr.captured_stderr) END\n  ) AS logs\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND t.canonical_nodeid = '${test_nodeid}'\nLIMIT 1;",
+          "rawSql": "SELECT\n  CONCAT_WS(\n    '\\n\\n',\n    CASE WHEN tr.full_trace IS NOT NULL THEN CONCAT('[full_trace]\\n', tr.full_trace) END,\n    CASE WHEN tr.captured_log IS NOT NULL THEN CONCAT('[captured_log]\\n', tr.captured_log) END,\n    CASE WHEN tr.captured_stdout IS NOT NULL THEN CONCAT('[captured_stdout]\\n', tr.captured_stdout) END,\n    CASE WHEN tr.captured_stderr IS NOT NULL THEN CONCAT('[captured_stderr]\\n', tr.captured_stderr) END\n  ) AS logs\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND tr.test_id = ${test_id}\nLIMIT 1;",
           "refId": "A"
         }
       ],
@@ -254,14 +254,14 @@
           "type": "mysql",
           "uid": "${ds}"
         },
-        "definition": "SELECT DISTINCT t.canonical_nodeid FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = '${run_id}' AND h.host_name = '${host}' ORDER BY t.canonical_nodeid",
+        "definition": "SELECT t.id AS __value, CONCAT(t.canonical_nodeid, ' :: ', t.test_name) AS __text FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = '${run_id}' AND h.host_name = '${host}' ORDER BY t.canonical_nodeid, t.test_name",
         "hide": 0,
         "includeAll": false,
         "label": "Test",
         "multi": false,
-        "name": "test_nodeid",
+        "name": "test_id",
         "options": [],
-        "query": "SELECT DISTINCT t.canonical_nodeid FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = '${run_id}' AND h.host_name = '${host}' ORDER BY t.canonical_nodeid",
+        "query": "SELECT t.id AS __value, CONCAT(t.canonical_nodeid, ' :: ', t.test_name) AS __text FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = '${run_id}' AND h.host_name = '${host}' ORDER BY t.canonical_nodeid, t.test_name",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
