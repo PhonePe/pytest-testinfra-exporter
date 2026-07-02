@@ -1,4 +1,4 @@
--- PostgreSQL schema for pytest-mariadb-reporter storage backend
+-- PostgreSQL schema for pytest-testinfra-exporter storage backend
 -- Drops existing reporter tables before recreating schema.
 
 DROP TABLE IF EXISTS test_result_markers;

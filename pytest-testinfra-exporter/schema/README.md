@@ -5,7 +5,7 @@ This document explains how to reset/apply the MariaDB schema and publish pytest 
 ## Files
 
 - Schema: [db.sql](db.sql)
-- Pytest plugin: [../tests/mariadb_reporter/__init__.py](../tests/mariadb_reporter/__init__.py)
+- Pytest plugin: [../plugin.py](../plugin.py)
 
 ## What gets stored
 

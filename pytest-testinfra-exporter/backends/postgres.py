@@ -15,7 +15,7 @@
 """PostgreSQL storage backend adapter.
 
 This module provides :class:`PostgresBackend`, a concrete implementation of
-:class:`pytest_mariadb_reporter.backend.AbstractStorageBackend`.
+:class:`pytest_testinfra_exporter.backend.AbstractStorageBackend`.
 
 The adapter owns all PostgreSQL-specific concerns:
 

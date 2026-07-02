@@ -1,10 +1,10 @@
-# pytest-mariadb-reporter
+# pytest-testinfra-exporter
 
 Backend-pluggable pytest reporting plugin with preserved `pytest-testinfra` host parsing behavior.
 
 ## Installation
 
-From the `pytest-mariadb-reporter` directory, install the plugin in editable mode:
+From the `pytest-testinfra-exporter` directory, install the plugin in editable mode:
 
 ```bash
 pip install -e .
@@ -13,7 +13,7 @@ pip install -e .
 If you are standing one level above this directory, use:
 
 ```bash
-pip install -e ./pytest-mariadb-reporter
+pip install -e ./pytest-testinfra-exporter
 ```
 
 Pytest will auto-discover the plugin through the package's `pytest11` entry point, so no `conftest.py` changes are required.

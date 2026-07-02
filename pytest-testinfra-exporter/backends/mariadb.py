@@ -15,7 +15,7 @@
 """MariaDB storage backend adapter.
 
 This module provides :class:`MariaDBBackend`, a concrete implementation of
-:class:`pytest_mariadb_reporter.backend.AbstractStorageBackend`.
+:class:`pytest_testinfra_exporter.backend.AbstractStorageBackend`.
 
 The adapter owns all MariaDB-specific concerns:
 
