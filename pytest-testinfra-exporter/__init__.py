@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""pytest-mariadb-reporter package entrypoint.
+"""pytest-testinfra-exporter package entrypoint.
 
 This package is exposed to pytest via the ``pytest11`` entry point so the
 plugin is auto-discovered after installation without requiring a ``conftest.py``

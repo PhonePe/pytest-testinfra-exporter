@@ -1,5 +1,5 @@
-pytest-mariadb-reporter
-=======================
+pytest-testinfra-exporter
+=========================
 
 Backend-pluggable pytest reporting with preserved testinfra parsing behavior.
 

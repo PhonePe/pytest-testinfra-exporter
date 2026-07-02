@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Storage backend implementations for pytest-mariadb-reporter."""
+"""Storage backend implementations for pytest-testinfra-exporter."""
 
 from .mariadb import MariaDBBackend
 from .postgres import PostgresBackend
