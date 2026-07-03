@@ -53,4 +53,4 @@ The package also supports PostgreSQL as a storage backend. The bundled Grafana d
 
 ---
 
-If your infrastructure tests already answer "is this host correct?", this project helps answer the next questions: "where is it failing?", "has this happened before?", and "what should I look at first?" It keeps pytest as the execution engine, keeps Grafana as the visualization layer, and adds enough reporting to make testinfra results visible, searchable, and useful. Add it to your existing test workflow, and your testinfra runs become a Grafana-ready reporting source with minimal ceremony.
+If your infrastructure tests already answer "is this host correct?", this project helps answer the next questions: "where is it failing?", "has this happened before?", and "how do I categorize and track a long list of failures?" It keeps pytest as the execution engine, keeps Grafana as the visualization layer, and adds enough reporting to make Testinfra results visible, searchable, and useful. Add it to your existing test workflow, and every run becomes a Grafana-ready reporting source with minimal ceremony.
