@@ -2,6 +2,8 @@
 
 `pytest-testinfra-exporter` is a pytest plugin that captures the results of [Testinfra](https://testinfra.readthedocs.io/en/latest/) test runs, stores them in a database, and displays in Grafana with test-suite aware and host-aware drill-downs.
 
+![Executive summary Grafana dashboard](assets/executive-summary-dashboard.png)
+
 [Testinfra](https://testinfra.readthedocs.io/en/latest/) is excellent for proving that your infra is in the correct state. But once a run finishes, the useful context is often trapped in terminal output or CI logs, making trends, host-specific failures, and recurring issues hard to see.
 
 This project is a lightweight reporting path for infrastructure tests: run your existing pytest-based checks, keep a durable history of what happened, and give engineers a detailed Grafana view of which hosts passed, which failed, and why. And all this without making any changes to your test suites. 
@@ -53,4 +55,4 @@ The package also supports PostgreSQL as a storage backend. The bundled Grafana d
 
 ---
 
-If your infrastructure tests already answer "is this host correct?", this project helps answer the next questions: "where is it failing?", "has this happened before?", and "how do I categorize and track a long list of failures?" It keeps pytest as the execution engine, keeps Grafana as the visualization layer, and adds enough reporting to make Testinfra results visible, searchable, and useful. Add it to your existing test workflow, and every run becomes a Grafana-ready reporting source with minimal ceremony.
+If your infrastructure tests already answer "is this host correct?", this project helps answer the next questions: "where is it failing?", "has this happened before?", and "how do I categorize and track a long list of failures to plan my fixes efficiently?". It keeps pytest as the execution engine, keeps Grafana as the visualization layer, and adds enough reporting to make Testinfra results visible, searchable, and useful. Add it to your existing test workflow, and every run becomes a Grafana-ready reporting source with minimal ceremony.
