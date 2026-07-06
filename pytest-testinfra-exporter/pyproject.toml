@@ -9,8 +9,8 @@ description = "Pytest plugin that reports testinfra results to MariaDB or Postgr
 maintainers = [
     "Udeshya Giri <udeshyagiri@gmail.com>",
     "Udeshya Giri <udeshya.giri@phonepe.com>",
-    "Aniruddha Thombre" <aniruddha@aniruddhas.com>, 
-    "Aniruddha Thombre", <aniruddha.t@phonepe.com>
+    "Aniruddha Thombre <aniruddha@aniruddhas.com>", 
+    "Aniruddha Thombre <aniruddha.t@phonepe.com>"
 ]
 license = "Apache-2.0"
 readme = { file = "README.md", content-type = "text/markdown" }
