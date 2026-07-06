@@ -4,8 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytest-testinfra-exporter"
-version = "0.2.0"
+version = "0.3.0"
 description = "Pytest plugin that reports testinfra results to MariaDB or PostgreSQL backends and visualizes on Grafana."
+maintainers = [
+    "Udeshya Giri <udeshyagiri@gmail.com>",
+    "Udeshya Giri <udeshya.giri@phonepe.com>",
+    "Aniruddha Thombre" <aniruddha@aniruddhas.com>, 
+    "Aniruddha Thombre", <aniruddha.t@phonepe.com>
+]
+license = "Apache-2.0"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.9"
 dependencies = [
