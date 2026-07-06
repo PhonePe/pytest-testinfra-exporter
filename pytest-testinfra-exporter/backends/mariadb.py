@@ -31,7 +31,7 @@ import datetime as dt
 import warnings
 from typing import Dict, List, Optional
 
-from ..backend import AbstractStorageBackend
+from ..backend import AbstractStorageBackend, resolve_datastore_options
 from ..models import MarkerDef, TestResultRecord, TestRunSummary
 
 
@@ -127,13 +127,14 @@ class MariaDBBackend(AbstractStorageBackend):
             self._disable("PyMySQL is not available. Install with: pip install PyMySQL (%s)" % exc)
             return
 
+        options = resolve_datastore_options(self.config, "mariadb")
         try:
             self._connection = pymysql.connect(
-                host=self.config.getoption("--mariadb-host"),
-                port=self.config.getoption("--mariadb-port"),
-                user=self.config.getoption("--mariadb-user"),
-                password=self.config.getoption("--mariadb-password"),
-                database=self.config.getoption("--mariadb-database"),
+                host=options.get("host"),
+                port=options.get("port"),
+                user=options.get("user"),
+                password=options.get("password"),
+                database=options.get("database"),
                 charset="utf8mb4",
                 autocommit=False,
             )

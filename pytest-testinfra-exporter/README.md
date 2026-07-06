@@ -105,6 +105,7 @@ pytest lifecycle hooks (plugin.py)
 |---|---|---|
 | `--storage-report` | `False` | Enable reporting pipeline. |
 | `--report-backend` | `mariadb` | Storage backend strategy selector (`mariadb`, `postgres`). |
+| `--datastore-config` | `datastores/default.yaml` | Path to a YAML file with datastore connection settings. The `datastore.<report-backend>` section is used. Explicit CLI options override its values. |
 | `--run-name` | Start datetime | Human-readable run name stored with the run. Defaults to `YYYY-MM-DD HH:MM:SS`. |
 | `--mariadb-host` | `localhost` | MariaDB host. |
 | `--mariadb-port` | `3306` | MariaDB port. |
@@ -154,6 +155,39 @@ pytest tests/ \
   --postgres-database testinfra_reports \
   --postgres-init-schema
 ```
+
+### Datastore config file
+
+Instead of passing connection flags on every invocation, define them once in a
+YAML file and select the backend with `--report-backend`. When
+`--datastore-config` is not supplied, the bundled
+[`datastores/default.yaml`](datastores/default.yaml) is used:
+
+```yaml
+datastore:
+  mariadb:
+    host: 'localhost'
+    port: 3306
+    user: 'testinfra_user'
+    password: 'password'
+    database: 'testinfra_reports'
+  postgres:
+    host: 'localhost'
+    port: 5432
+    user: 'postgres'
+    password: 'password'
+    database: 'testinfra_reports'
+```
+
+```bash
+pytest tests/ \
+  --storage-report \
+  --report-backend mariadb \
+  --datastore-config datastore.yaml
+```
+
+Any explicit CLI option (for example `--mariadb-user`, `--mariadb-port`)
+overrides the corresponding value from the YAML file.
 
 ---
 

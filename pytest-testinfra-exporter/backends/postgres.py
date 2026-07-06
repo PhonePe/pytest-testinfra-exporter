@@ -32,7 +32,7 @@ import os
 import warnings
 from typing import Dict, List, Optional
 
-from ..backend import AbstractStorageBackend
+from ..backend import AbstractStorageBackend, resolve_datastore_options
 from ..models import MarkerDef, TestResultRecord, TestRunSummary
 
 
@@ -122,13 +122,14 @@ class PostgresBackend(AbstractStorageBackend):
             )
             return
 
+        options = resolve_datastore_options(self.config, "postgres")
         try:
             self._connection = psycopg2.connect(
-                host=self.config.getoption("--postgres-host"),
-                port=self.config.getoption("--postgres-port"),
-                user=self.config.getoption("--postgres-user"),
-                password=self.config.getoption("--postgres-password"),
-                dbname=self.config.getoption("--postgres-database"),
+                host=options.get("host"),
+                port=options.get("port"),
+                user=options.get("user"),
+                password=options.get("password"),
+                dbname=options.get("database"),
             )
             self._connection.autocommit = False
         except Exception as exc:

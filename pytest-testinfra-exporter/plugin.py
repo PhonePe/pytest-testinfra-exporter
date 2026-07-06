@@ -337,7 +337,6 @@ def pytest_addoption(parser):
     group = parser.getgroup("mariadb-reporting")
     group.addoption(
         "--storage-report",
-        "--mariadb-report",
         action="store_true",
         default=False,
         help="Enable writing pytest results to storage backend.",
@@ -349,16 +348,27 @@ def pytest_addoption(parser):
         help="Storage backend for reporting (currently supported: mariadb, postgres).",
     )
     group.addoption(
+        "--datastore-config",
+        action="store",
+        default=None,
+        help=(
+            "Path to a YAML file with datastore connection settings. The "
+            "section under 'datastore.<report-backend>' is used. Explicit CLI "
+            "options (e.g. --mariadb-user) override values from this file. "
+            "Defaults to the bundled datastores/default.yaml when unset."
+        ),
+    )
+    group.addoption(
         "--run-name",
         action="store",
         default=None,
         help="Optional human-readable name for the test run. Defaults to run start datetime.",
     )
-    group.addoption("--mariadb-host", action="store", default="localhost")
-    group.addoption("--mariadb-port", action="store", type=int, default=3306)
-    group.addoption("--mariadb-user", action="store", default="testinfra_user")
-    group.addoption("--mariadb-password", action="store", default="password")
-    group.addoption("--mariadb-database", action="store", default="testinfra_reports")
+    group.addoption("--mariadb-host", action="store", default=None)
+    group.addoption("--mariadb-port", action="store", type=int, default=None)
+    group.addoption("--mariadb-user", action="store", default=None)
+    group.addoption("--mariadb-password", action="store", default=None)
+    group.addoption("--mariadb-database", action="store", default=None)
     group.addoption(
         "--mariadb-suite-version",
         action="store",
@@ -378,11 +388,11 @@ def pytest_addoption(parser):
         default=_default_failure_map_path(),
         help="Path to YAML map used for tagging failed/error tests.",
     )
-    group.addoption("--postgres-host", action="store", default="localhost")
-    group.addoption("--postgres-port", action="store", type=int, default=5432)
-    group.addoption("--postgres-user", action="store", default="postgres")
-    group.addoption("--postgres-password", action="store", default="password")
-    group.addoption("--postgres-database", action="store", default="testinfra_reports")
+    group.addoption("--postgres-host", action="store", default=None)
+    group.addoption("--postgres-port", action="store", type=int, default=None)
+    group.addoption("--postgres-user", action="store", default=None)
+    group.addoption("--postgres-password", action="store", default=None)
+    group.addoption("--postgres-database", action="store", default=None)
     group.addoption(
         "--postgres-init-schema",
         action="store_true",
