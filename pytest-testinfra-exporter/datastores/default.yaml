@@ -1,0 +1,23 @@
+# Default datastore connection settings.
+#
+# The section under `datastore.<report-backend>` is selected based on the
+# `--report-backend` CLI option. Explicit CLI options (e.g. --mariadb-user,
+# --postgres-port) override the corresponding values defined here.
+#
+# Usage:
+#   pytest --storage-report --report-backend mariadb \
+#     --datastore-config datastores/default.yaml
+
+datastore:
+  mariadb:
+    host: 'localhost'
+    port: 3306
+    user: 'testinfra_user'
+    password: 'password'
+    database: 'testinfra_reports'
+  postgres:
+    host: 'localhost'
+    port: 5432
+    user: 'postgres'
+    password: 'password'
+    database: 'testinfra_reports'

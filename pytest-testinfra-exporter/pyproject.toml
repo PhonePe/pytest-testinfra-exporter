@@ -44,5 +44,6 @@ pytest_testinfra_exporter = "."
 [tool.setuptools.package-data]
 pytest_testinfra_exporter = [
     "failure_mapper/*.yaml",
+    "datastores/*.yaml",
     "schema/*.sql",
 ]

@@ -39,7 +39,7 @@ Run tests and publish:
 
 ```bash
 pytest infra/test_monitoring.py \
-  --mariadb-report \
+  --storage-report \
   --mariadb-host 127.0.0.1 \
   --mariadb-port 3306 \
   --mariadb-user root \
