@@ -1,0 +1,673 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Back to Suite Overview",
+      "type": "link",
+      "url": "/d/testinfra-suite-overview/testinfra-suite-overview?var-ds=${ds}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Number of tests",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Passed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.9,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "orientation": "auto",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        },
+        "xField": "run_label",
+        "xTickLabelRotation": -45,
+        "xTickLabelSpacing": 100
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') AS run_label,\n  SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END) AS Passed,\n  SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END) AS Failed,\n  SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END) AS Skipped\nFROM test_runs r\nJOIN test_results tr ON tr.run_id = r.run_id\nJOIN tests t ON t.id = tr.test_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30')\n  AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring})\n  AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)\n  AND ('${run_id:csv}' = '__all' OR FIND_IN_SET(r.run_id, '${run_id:csv}') > 0)\nGROUP BY r.run_id, r.started_at\nORDER BY r.started_at;",
+          "refId": "A"
+        }
+      ],
+      "title": "Passed / Failed / Skipped by Run — ${suite}",
+      "type": "barchart"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 12
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "value",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  COUNT(DISTINCT tr.host_id) AS total_hosts\nFROM test_runs r\nJOIN test_results tr ON tr.run_id = r.run_id\nJOIN tests t ON t.id = tr.test_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30')\n  AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring})\n  AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)\n  AND ('${run_id:csv}' = '__all' OR FIND_IN_SET(r.run_id, '${run_id:csv}') > 0);",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Hosts",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Passed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Failed"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 8,
+        "y": 12
+      },
+      "options": {
+        "displayLabels": [
+          "value"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END) AS Passed,\n  SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END) AS Failed,\n  SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END) AS Skipped\nFROM test_runs r\nJOIN test_results tr ON tr.run_id = r.run_id\nJOIN tests t ON t.id = tr.test_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30')\n  AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring})\n  AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)\n  AND ('${run_id:csv}' = '__all' OR FIND_IN_SET(r.run_id, '${run_id:csv}') > 0);",
+          "refId": "A"
+        }
+      ],
+      "title": "Total Passed / Failed / Skipped",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "mysql",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "displayMode": "auto",
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "canonical_nodeid"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "details",
+                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${__data.fields[\"run_id\"]}&var-host=${__data.fields[\"host_name\"]}&var-test_id=${__data.fields[\"test_id\"]}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "test_name"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "host_name"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.tooltip.field",
+                "value": "failure_tag"
+              },
+              {
+                "id": "custom.tooltip.placement",
+                "value": "auto"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "error": {
+                        "color": "dark-red",
+                        "index": 0,
+                        "text": "Error"
+                      },
+                      "fail": {
+                        "color": "red",
+                        "index": 1,
+                        "text": "Fail"
+                      },
+                      "pass": {
+                        "color": "green",
+                        "index": 2,
+                        "text": "Pass"
+                      },
+                      "skipped": {
+                        "color": "yellow",
+                        "index": 3,
+                        "text": "Skipped"
+                      },
+                      "xfail": {
+                        "color": "orange",
+                        "index": 4,
+                        "text": "XFail"
+                      },
+                      "xpass": {
+                        "color": "blue",
+                        "index": 5,
+                        "text": "XPass"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "run_id"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "test_id"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failure_tag"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 20
+      },
+      "options": {
+        "cellHeight": "sm",
+        "columnFilter": true,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "started_at"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "mysql",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') AS started_at,\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  CASE WHEN LOWER(tr.status) IN ('fail', 'error') THEN tr.failure_tag END AS failure_tag,\n  tr.duration_ms,\n  r.run_id,\n  t.id AS test_id\nFROM test_results tr\nJOIN test_runs r ON r.run_id = tr.run_id\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE r.started_at BETWEEN\n  CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30')\n  AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30')\n  AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring})\n  AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)\n  AND ('${run_id:csv}' = '__all' OR FIND_IN_SET(r.run_id, '${run_id:csv}') > 0)\nORDER BY r.started_at DESC, h.host_name, t.canonical_nodeid;",
+          "refId": "A"
+        }
+      ],
+      "title": "Test Results",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "testinfra",
+    "mariadb",
+    "suite",
+    "coverage"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "mysql",
+        "refresh": 1,
+        "label": "MySQL/MariaDB Datasource",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "TestInfra MariaDB",
+          "value": "testinfra-mariadb"
+        }
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT t.test_suite AS __value, t.test_suite AS __text FROM tests t JOIN test_results tr ON tr.test_id = t.id JOIN test_runs r ON r.run_id = tr.run_id WHERE t.test_suite IS NOT NULL AND t.test_suite <> '' AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY t.test_suite",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Test Suite",
+        "multi": false,
+        "name": "suite",
+        "options": [],
+        "query": "SELECT DISTINCT t.test_suite AS __value, t.test_suite AS __text FROM tests t JOIN test_results tr ON tr.test_id = t.id JOIN test_runs r ON r.run_id = tr.run_id WHERE t.test_suite IS NOT NULL AND t.test_suite <> '' AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY t.test_suite",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT t.canonical_nodeid AS __value, t.canonical_nodeid AS __text FROM tests t JOIN test_results tr ON tr.test_id = t.id JOIN test_runs r ON r.run_id = tr.run_id WHERE t.test_suite = ${suite:sqlstring} AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY t.canonical_nodeid",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "__all",
+        "label": "Test",
+        "multi": true,
+        "name": "test",
+        "options": [],
+        "query": "SELECT DISTINCT t.canonical_nodeid AS __value, t.canonical_nodeid AS __text FROM tests t JOIN test_results tr ON tr.test_id = t.id JOIN test_runs r ON r.run_id = tr.run_id WHERE t.test_suite = ${suite:sqlstring} AND r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') ORDER BY t.canonical_nodeid",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "__all"
+          ]
+        }
+      },
+      {
+        "datasource": {
+          "type": "mysql",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT r.run_id AS __value, DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND EXISTS (SELECT 1 FROM test_results tr JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = r.run_id AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring}) AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)) ORDER BY r.started_at DESC",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "__all",
+        "label": "Run",
+        "multi": true,
+        "name": "run_id",
+        "options": [],
+        "query": "SELECT r.run_id AS __value, DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND EXISTS (SELECT 1 FROM test_results tr JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = r.run_id AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring}) AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)) ORDER BY r.started_at DESC",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query",
+        "current": {
+          "selected": true,
+          "text": [
+            "All"
+          ],
+          "value": [
+            "__all"
+          ]
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "TestInfra - Suite Test Coverage",
+  "uid": "testinfra-suite-test-coverage",
+  "version": 1,
+  "weekStart": ""
+}
