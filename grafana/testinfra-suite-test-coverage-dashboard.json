@@ -634,7 +634,7 @@
           "type": "mysql",
           "uid": "${ds}"
         },
-        "definition": "SELECT r.run_id AS __value, DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND EXISTS (SELECT 1 FROM test_results tr JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = r.run_id AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring}) AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)) ORDER BY r.started_at DESC",
+        "definition": "SELECT r.run_id AS __value, CASE WHEN r.run_name = DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') THEN r.run_name ELSE CONCAT(r.run_name, ' (', DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s'), ')') END AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND EXISTS (SELECT 1 FROM test_results tr JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = r.run_id AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring}) AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)) ORDER BY r.started_at DESC",
         "hide": 0,
         "includeAll": true,
         "allValue": "__all",
@@ -642,7 +642,7 @@
         "multi": true,
         "name": "run_id",
         "options": [],
-        "query": "SELECT r.run_id AS __value, DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND EXISTS (SELECT 1 FROM test_results tr JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = r.run_id AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring}) AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)) ORDER BY r.started_at DESC",
+        "query": "SELECT r.run_id AS __value, CASE WHEN r.run_name = DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s') THEN r.run_name ELSE CONCAT(r.run_name, ' (', DATE_FORMAT(r.started_at, '%Y-%m-%d %H:%i:%s'), ')') END AS __text FROM test_runs r WHERE r.started_at BETWEEN CONVERT_TZ(FROM_UNIXTIME(${__from}/1000), @@session.time_zone, '+05:30') AND CONVERT_TZ(FROM_UNIXTIME(${__to}/1000), @@session.time_zone, '+05:30') AND EXISTS (SELECT 1 FROM test_results tr JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = r.run_id AND ('${suite}' = '' OR t.test_suite = ${suite:sqlstring}) AND ('${test:csv}' = '__all' OR FIND_IN_SET(t.canonical_nodeid, '${test:csv}') > 0)) ORDER BY r.started_at DESC",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
