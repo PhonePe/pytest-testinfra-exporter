@@ -29,6 +29,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
+[project.urls]
+Homepage = "https://github.com/phonepe/pytest-testinfra-exporter"
+Issues = "https://github.com/phonepe/pytest-testinfra-exporter/issues"
 
 [project.entry-points.pytest11]
 pytest_testinfra_exporter = "pytest_testinfra_exporter"
