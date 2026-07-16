@@ -1,0 +1,43 @@
+name: Release to PyPI
+
+on:
+  # Allows you to trigger the workflow manually from the Actions tab
+  workflow_dispatch:
+  # Automatically triggers the workflow when a version tag (e.g., v0.3.0) is pushed
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build and Publish Python Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        # Scopes the build to the subdirectory where pyproject.toml and the package code live.
+        # This resolves the "." package-dir paths defined in your pyproject.toml.
+        working-directory: pytest-testinfra-exporter
+        run: |
+          python -m build
+
+      - name: Publish to PyPI
+        working-directory: pytest-testinfra-exporter
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PUBLISH_REGISTRY_PASSWORD }}
+        run: |
+          twine upload dist/*
