@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pytest-testinfra-exporter"
-version = "0.3.1"
+version = "0.4.0"
 description = "Pytest plugin that reports testinfra results to MariaDB or PostgreSQL backends and visualizes on Grafana."
 maintainers = [
     { name = "Udeshya Giri", email = "udeshyagiri@gmail.com" },
