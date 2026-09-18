@@ -1,0 +1,532 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Back to Suite Overview",
+      "type": "link",
+      "url": "/d/testinfra-suite-overview/testinfra-suite-overview?var-ds=${ds}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "displayMode": "auto",
+            "filterable": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "canonical_nodeid"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Open test logs",
+                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}&var-test_id=${__data.fields[\"test_id\"]}",
+                    "targetBlank": false
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "test_name"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "custom.tooltip.field",
+                "value": "failure_tag"
+              },
+              {
+                "id": "custom.tooltip.placement",
+                "value": "auto"
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "fail": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "Fail"
+                      },
+                      "pass": {
+                        "color": "green",
+                        "index": 1,
+                        "text": "Pass"
+                      },
+                      "skip": {
+                        "color": "yellow",
+                        "index": 2,
+                        "text": "Skip"
+                      },
+                      "skipped": {
+                        "color": "yellow",
+                        "index": 3,
+                        "text": "Skipped"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "test_id"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "failure_tag"
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom.viz",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "cellHeight": "sm",
+        "columnFilter": true,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "finished_at"
+          }
+        ]
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  t.canonical_nodeid,\n  t.test_name,\n  t.id AS test_id,\n  LOWER(tr.status) AS status,\n  CASE WHEN LOWER(tr.status) = 'fail' THEN tr.failure_tag END AS failure_tag,\n  TO_CHAR(tr.started_at, 'YYYY-MM-DD HH24:MI:SS.US') AS started_at,\n  TO_CHAR(tr.finished_at, 'YYYY-MM-DD HH24:MI:SS.US') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\nORDER BY tr.finished_at DESC;",
+          "refId": "A"
+        }
+      ],
+      "title": "Tests for Host ${host} (Click test to drill down)",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END) AS pass,\n  SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END) AS fail,\n  SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END) AS skipped\nFROM test_results tr\nWHERE tr.run_id = '${run_id}';",
+          "refId": "A"
+        }
+      ],
+      "title": "Status Distribution for Run ${run_id}",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "pass"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "fail"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "skipped"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FADE2A",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  SUM(CASE WHEN tr.status = 'pass' THEN 1 ELSE 0 END) AS pass,\n  SUM(CASE WHEN tr.status = 'fail' THEN 1 ELSE 0 END) AS fail,\n  SUM(CASE WHEN tr.status = 'skipped' THEN 1 ELSE 0 END) AS skipped\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}';",
+          "refId": "A"
+        }
+      ],
+      "title": "Status Distribution for Run ${run_id} and Host ${host}",
+      "type": "piechart"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "testinfra",
+    "mariadb",
+    "drilldown",
+    "suite"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "postgres",
+        "refresh": 1,
+        "label": "PostgreSQL Datasource",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "TestInfra Postgres",
+          "value": "testinfra-postgres"
+        }
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "${ds}"
+        },
+        "hide": 2,
+        "label": "Suite Host",
+        "name": "suite_host",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT host_options.host_name AS __value, host_options.host_name AS __text FROM (SELECT '${suite_host}' AS host_name, 0 AS sort_order WHERE '${suite_host}' <> '' UNION ALL SELECT DISTINCT h.host_name AS host_name, 1 AS sort_order FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE '${suite_host}' = '' AND t.started_at BETWEEN (TO_TIMESTAMP(${__from}/1000.0) AT TIME ZONE 'Asia/Kolkata') AND (TO_TIMESTAMP(${__to}/1000.0) AT TIME ZONE 'Asia/Kolkata')) host_options ORDER BY host_options.sort_order, host_options.host_name",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Host",
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": "SELECT host_options.host_name AS __value, host_options.host_name AS __text FROM (SELECT '${suite_host}' AS host_name, 0 AS sort_order WHERE '${suite_host}' <> '' UNION ALL SELECT DISTINCT h.host_name AS host_name, 1 AS sort_order FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE '${suite_host}' = '' AND t.started_at BETWEEN (TO_TIMESTAMP(${__from}/1000.0) AT TIME ZONE 'Asia/Kolkata') AND (TO_TIMESTAMP(${__to}/1000.0) AT TIME ZONE 'Asia/Kolkata')) host_options ORDER BY host_options.sort_order, host_options.host_name",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "${ds}"
+        },
+        "hide": 2,
+        "label": "Point Time",
+        "name": "point_time",
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "${ds}"
+        },
+        "definition": "(SELECT DISTINCT tr.run_id AS __value, CASE WHEN t.run_name = TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS') THEN t.run_name ELSE CONCAT(t.run_name, ' (', TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS'), ')') END AS __text, (ABS(ABS(EXTRACT(EPOCH FROM (COALESCE(t.finished_at, t.started_at)) - ((TO_TIMESTAMP(${point_time}/1000.0) AT TIME ZONE 'Asia/Kolkata'))) * 1000000)::bigint))::text AS __ord0 FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE '${point_time}' <> '' AND h.host_name = '${host}' ORDER BY __ord0 ASC LIMIT 1) UNION ALL (SELECT DISTINCT tr.run_id AS __value, CASE WHEN t.run_name = TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS') THEN t.run_name ELSE CONCAT(t.run_name, ' (', TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS'), ')') END AS __text, (t.started_at)::text AS __ord0 FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE '${point_time}' = '' AND h.host_name = '${host}' AND t.started_at BETWEEN (TO_TIMESTAMP(${__from}/1000.0) AT TIME ZONE 'Asia/Kolkata') AND (TO_TIMESTAMP(${__to}/1000.0) AT TIME ZONE 'Asia/Kolkata') ORDER BY __ord0 DESC)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Run",
+        "multi": false,
+        "name": "run_id",
+        "options": [],
+        "query": "(SELECT DISTINCT tr.run_id AS __value, CASE WHEN t.run_name = TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS') THEN t.run_name ELSE CONCAT(t.run_name, ' (', TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS'), ')') END AS __text, (ABS(ABS(EXTRACT(EPOCH FROM (COALESCE(t.finished_at, t.started_at)) - ((TO_TIMESTAMP(${point_time}/1000.0) AT TIME ZONE 'Asia/Kolkata'))) * 1000000)::bigint))::text AS __ord0 FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE '${point_time}' <> '' AND h.host_name = '${host}' ORDER BY __ord0 ASC LIMIT 1) UNION ALL (SELECT DISTINCT tr.run_id AS __value, CASE WHEN t.run_name = TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS') THEN t.run_name ELSE CONCAT(t.run_name, ' (', TO_CHAR(t.started_at, 'YYYY-MM-DD HH24:MI:SS'), ')') END AS __text, (t.started_at)::text AS __ord0 FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN test_runs t ON t.run_id = tr.run_id WHERE '${point_time}' = '' AND h.host_name = '${host}' AND t.started_at BETWEEN (TO_TIMESTAMP(${__from}/1000.0) AT TIME ZONE 'Asia/Kolkata') AND (TO_TIMESTAMP(${__to}/1000.0) AT TIME ZONE 'Asia/Kolkata') ORDER BY __ord0 DESC)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "TestInfra - Suite Host Details",
+  "uid": "testinfra-suite-host-details",
+  "version": 1,
+  "weekStart": ""
+}

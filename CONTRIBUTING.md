@@ -30,7 +30,7 @@ The package supports Python 3.9 and newer.
 ## Areas Of The Project
 
 - `pytest-testinfra-exporter/` contains the pytest plugin, backend interface, storage adapters, models, schemas, and package documentation.
-- `grafana/` contains importable and provisionable Grafana dashboards.
+- `grafana/mariadb/` and `grafana/postgres/` contain importable and provisionable Grafana dashboards for the MariaDB and PostgreSQL backends respectively (see `grafana/README.md`).
 - `pytest-testinfra-exporter/schema/` contains database schema files and schema usage notes.
 
 For more detail, start with the root [README.md](README.md), then follow the README inside the area you are changing.

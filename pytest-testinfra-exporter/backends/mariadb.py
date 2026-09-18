@@ -31,21 +31,9 @@ import datetime as dt
 import warnings
 from typing import Dict, List, Optional
 
-from ..backend import AbstractStorageBackend, resolve_datastore_options
+from ..backend import AbstractStorageBackend, resolve_datastore_options, resolve_report_tz_spec
 from ..models import MarkerDef, TestResultRecord, TestRunSummary
-
-
-#: Fixed IST timezone used for naive datetime persistence.
-IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
-
-
-def _istnow_naive() -> dt.datetime:
-    """Return current IST wall clock as naive datetime.
-
-    :return: Current datetime in IST with ``tzinfo=None``.
-    """
-
-    return dt.datetime.now(IST).replace(tzinfo=None)
+from ..timezones import DEFAULT_TZ, now_naive, parse_timezone
 
 
 def _normalize_marker_value(value):
@@ -95,7 +83,18 @@ class MariaDBBackend(AbstractStorageBackend):
         """
 
         self.config = config
+        self._report_tz = parse_timezone(
+            resolve_report_tz_spec(config, "mariadb")
+        )
         self._ensure_connection()
+
+    def _now_naive(self) -> dt.datetime:
+        """Current wall clock in the configured report timezone.
+
+        :return: Naive datetime with ``tzinfo=None``.
+        """
+
+        return now_naive(getattr(self, "_report_tz", None) or DEFAULT_TZ)
 
     def _disable(self, reason: str) -> None:
         """Disable backend and emit one warning.
@@ -309,7 +308,7 @@ class MariaDBBackend(AbstractStorageBackend):
         :return: Host primary key.
         """
 
-        now = _istnow_naive()
+        now = self._now_naive()
         cursor.execute(
             """
             INSERT INTO hosts (host_name, first_seen, last_seen)
@@ -522,7 +521,7 @@ class MariaDBBackend(AbstractStorageBackend):
                 WHERE run_id = %s
                 """,
                 (
-                    counters.get("finished_at") or _istnow_naive(),
+                    counters.get("finished_at") or self._now_naive(),
                     int(counters.get("total_tests", 0)),
                     int(counters.get("passed_count", 0)),
                     int(counters.get("failed_count", 0)),
