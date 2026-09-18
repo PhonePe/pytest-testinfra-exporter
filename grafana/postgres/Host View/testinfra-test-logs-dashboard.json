@@ -1,0 +1,283 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [
+    {
+      "title": "Back to Host Details",
+      "type": "link",
+      "url": "/d/testinfra-host-details/testinfra-host-details?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}"
+    },
+    {
+      "title": "Back to Host Overview",
+      "type": "link",
+      "url": "/d/testinfra-overview/testinfra-host-overview?var-ds=${ds}"
+    }
+  ],
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "custom.filterable",
+                "value": true
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "basic",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "fail": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "Fail"
+                      },
+                      "pass": {
+                        "color": "green",
+                        "index": 1,
+                        "text": "Pass"
+                      },
+                      "skip": {
+                        "color": "yellow",
+                        "index": 2,
+                        "text": "Skip"
+                      },
+                      "skipped": {
+                        "color": "yellow",
+                        "index": 3,
+                        "text": "Skipped"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  h.host_name,\n  t.canonical_nodeid,\n  t.test_name,\n  LOWER(tr.status) AS status,\n  tr.failure_tag AS \"Failure Tag\",\n  TO_CHAR(tr.started_at, 'YYYY-MM-DD HH24:MI:SS.US') AS started_at,\n  TO_CHAR(tr.finished_at, 'YYYY-MM-DD HH24:MI:SS.US') AS finished_at,\n  tr.duration_ms\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND tr.test_id = ${test_id}\nLIMIT 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Selected Test Summary",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${ds}"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "logs"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto",
+                  "wrapText": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "options": {
+        "cellHeight": "lg",
+        "enablePagination": true,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": false
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${ds}"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT\n  concat_ws(\n    E'\\n\\n',\n    CASE WHEN tr.full_trace IS NOT NULL THEN CONCAT('[full_trace]\\n', tr.full_trace) END,\n    CASE WHEN tr.captured_log IS NOT NULL THEN CONCAT('[captured_log]\\n', tr.captured_log) END,\n    CASE WHEN tr.captured_stdout IS NOT NULL THEN CONCAT('[captured_stdout]\\n', tr.captured_stdout) END,\n    CASE WHEN tr.captured_stderr IS NOT NULL THEN CONCAT('[captured_stderr]\\n', tr.captured_stderr) END\n  ) AS logs\nFROM test_results tr\nJOIN hosts h ON h.id = tr.host_id\nJOIN tests t ON t.id = tr.test_id\nWHERE tr.run_id = '${run_id}'\n  AND h.host_name = '${host}'\n  AND tr.test_id = ${test_id}\nLIMIT 1;",
+          "refId": "A"
+        }
+      ],
+      "title": "Logs and Failure Details",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "testinfra",
+    "mariadb",
+    "drilldown"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "ds",
+        "type": "datasource",
+        "query": "postgres",
+        "refresh": 1,
+        "label": "PostgreSQL Datasource",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "current": {
+          "selected": true,
+          "text": "TestInfra Postgres",
+          "value": "testinfra-postgres"
+        }
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT run_id AS __value, CASE WHEN run_name = TO_CHAR(started_at, 'YYYY-MM-DD HH24:MI:SS') THEN run_name ELSE CONCAT(run_name, ' (', TO_CHAR(started_at, 'YYYY-MM-DD HH24:MI:SS'), ')') END AS __text FROM test_runs WHERE started_at BETWEEN (TO_TIMESTAMP(${__from}/1000.0) AT TIME ZONE 'Asia/Kolkata') AND (TO_TIMESTAMP(${__to}/1000.0) AT TIME ZONE 'Asia/Kolkata') ORDER BY started_at DESC",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Run",
+        "multi": false,
+        "name": "run_id",
+        "options": [],
+        "query": "SELECT run_id AS __value, CASE WHEN run_name = TO_CHAR(started_at, 'YYYY-MM-DD HH24:MI:SS') THEN run_name ELSE CONCAT(run_name, ' (', TO_CHAR(started_at, 'YYYY-MM-DD HH24:MI:SS'), ')') END AS __text FROM test_runs WHERE started_at BETWEEN (TO_TIMESTAMP(${__from}/1000.0) AT TIME ZONE 'Asia/Kolkata') AND (TO_TIMESTAMP(${__to}/1000.0) AT TIME ZONE 'Asia/Kolkata') ORDER BY started_at DESC",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT DISTINCT h.host_name FROM test_results tr JOIN hosts h ON h.id = tr.host_id WHERE tr.run_id = '${run_id}' ORDER BY h.host_name",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Host",
+        "multi": false,
+        "name": "host",
+        "options": [],
+        "query": "SELECT DISTINCT h.host_name FROM test_results tr JOIN hosts h ON h.id = tr.host_id WHERE tr.run_id = '${run_id}' ORDER BY h.host_name",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "datasource": {
+          "type": "postgres",
+          "uid": "${ds}"
+        },
+        "definition": "SELECT t.id AS __value, CONCAT(t.canonical_nodeid, ' :: ', t.test_name) AS __text FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = '${run_id}' AND h.host_name = '${host}' ORDER BY t.canonical_nodeid, t.test_name",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Test",
+        "multi": false,
+        "name": "test_id",
+        "options": [],
+        "query": "SELECT t.id AS __value, CONCAT(t.canonical_nodeid, ' :: ', t.test_name) AS __text FROM test_results tr JOIN hosts h ON h.id = tr.host_id JOIN tests t ON t.id = tr.test_id WHERE tr.run_id = '${run_id}' AND h.host_name = '${host}' ORDER BY t.canonical_nodeid, t.test_name",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "TestInfra - Test Logs",
+  "uid": "testinfra-test-logs",
+  "version": 2,
+  "weekStart": ""
+}

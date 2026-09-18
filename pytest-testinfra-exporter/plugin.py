@@ -38,33 +38,7 @@ from .backend import AbstractStorageBackend
 from .backends.mariadb import MariaDBBackend
 from .backends.postgres import PostgresBackend
 from .models import MarkerDef, TestResultRecord, TestRunSummary
-
-
-#: Fixed offset timezone for IST used when persisting naive datetimes.
-IST = dt.timezone(dt.timedelta(hours=5, minutes=30))
-
-
-def _istnow_naive() -> dt.datetime:
-    """Return current wall-clock time in IST as naive datetime.
-
-    :return: Current IST datetime with ``tzinfo=None``.
-    """
-
-    return dt.datetime.now(IST).replace(tzinfo=None)
-
-
-def _epoch_to_ist_naive(value):
-    """Convert epoch seconds to naive IST datetime.
-
-    :param value: POSIX epoch timestamp.
-    :return: Naive IST datetime, or ``None`` if input is ``None``.
-    """
-
-    if value is None:
-        return None
-    return dt.datetime.fromtimestamp(value, tz=dt.timezone.utc).astimezone(IST).replace(
-        tzinfo=None
-    )
+from .timezones import DEFAULT_TZ, epoch_to_naive, now_naive, parse_timezone
 
 
 def _canonical_nodeid(nodeid):
@@ -328,6 +302,19 @@ def _build_backend(backend_name: str) -> AbstractStorageBackend:
     raise ValueError("Unsupported backend '%s'. Supported values: mariadb, postgres" % backend_name)
 
 
+def _resolve_report_tz(config):
+    """Resolve the report timezone spec (CLI flag wins over datastore YAML).
+
+    :param config: Pytest config object.
+    :return: Timezone spec string or ``None`` (falls back to IST default).
+    """
+
+    from .backend import resolve_report_tz_spec
+
+    backend_name = config.getoption("--report-backend", default=None)
+    return resolve_report_tz_spec(config, backend_name)
+
+
 def pytest_addoption(parser):
     """Register CLI options for storage reporting.
 
@@ -346,6 +333,16 @@ def pytest_addoption(parser):
         action="store",
         default="mariadb",
         help="Storage backend for reporting (currently supported: mariadb, postgres).",
+    )
+    group.addoption(
+        "--report-tz",
+        action="store",
+        default=None,
+        help=(
+            "Timezone for persisted timestamps: IANA name (e.g. Asia/Kolkata, "
+            "UTC) or fixed offset (e.g. +05:30). Overrides 'report_tz' from the "
+            "datastore config. Defaults to Asia/Kolkata (IST)."
+        ),
     )
     group.addoption(
         "--datastore-config",
@@ -566,7 +563,8 @@ class TestinfraStorageReporter:
         self._backend_name = config.getoption("--report-backend")
         self._backend: Optional[AbstractStorageBackend] = None
         self._run_id = str(uuid.uuid4())
-        self._run_started_at = _istnow_naive()
+        self._report_tz = parse_timezone(_resolve_report_tz(config))
+        self._run_started_at = now_naive(self._report_tz)
         self._run_name = _resolve_run_name(config, self._run_started_at)
         self._reports_by_nodeid: Dict[str, Dict[str, object]] = {}
         self._metadata_by_nodeid: Dict[str, Dict[str, object]] = {}
@@ -797,12 +795,12 @@ class TestinfraStorageReporter:
         starts = [getattr(r, "start", None) for r in phase_reports]
 
         started_at = (
-            _epoch_to_ist_naive(min(s for s in starts if s is not None))
+            epoch_to_naive(min(s for s in starts if s is not None), self._report_tz)
             if any(s is not None for s in starts)
             else None
         )
         finished_at = (
-            _epoch_to_ist_naive(max(s for s in stops if s is not None))
+            epoch_to_naive(max(s for s in stops if s is not None), self._report_tz)
             if any(s is not None for s in stops)
             else started_at
         )
@@ -919,7 +917,7 @@ class TestinfraStorageReporter:
         errored_count = sum(1 for row in self._result_rows if row.status == "error")
 
         counters = {
-            "finished_at": _istnow_naive(),
+            "finished_at": now_naive(self._report_tz),
             "total_tests": total_tests,
             "passed_count": passed_count,
             "failed_count": failed_count,

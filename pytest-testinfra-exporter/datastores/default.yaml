@@ -4,6 +4,11 @@
 # `--report-backend` CLI option. Explicit CLI options (e.g. --mariadb-user,
 # --postgres-port) override the corresponding values defined here.
 #
+# Optional per-backend setting:
+#   report_tz: timezone for persisted timestamps (IANA name like UTC or
+#     Asia/Kolkata, or a fixed offset like +05:30). Defaults to Asia/Kolkata
+#     (IST). The --report-tz CLI flag overrides this value.
+#
 # Usage:
 #   pytest --storage-report --report-backend mariadb \
 #     --datastore-config datastores/default.yaml

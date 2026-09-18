@@ -31,6 +31,34 @@ from .models import TestResultRecord, TestRunSummary
 #: Connection settings recognized in the datastore config and as CLI overrides.
 CONNECTION_KEYS = ("host", "port", "user", "password", "database")
 
+#: Extra per-backend settings (non-connection) recognized in the datastore
+#: config sections and via ``--report-tz``.
+REPORT_KEYS = ("report_tz",)
+
+
+def resolve_report_tz_spec(config, backend_name: str):
+    """Resolve the report timezone spec (CLI flag wins over datastore YAML).
+
+    :param config: Pytest config object (may be ``None``).
+    :param backend_name: Backend selector string.
+    :return: Timezone spec string or ``None`` (falls back to IST default).
+    """
+
+    if config is None:
+        return None
+
+    try:
+        cli_value = config.getoption("--report-tz", default=None)
+    except (ValueError, KeyError):
+        cli_value = None
+    if cli_value:
+        return cli_value
+
+    normalized = (backend_name or "mariadb").strip().lower()
+    yaml_path = config.getoption("--datastore-config", default=None) or _default_datastore_config_path()
+    section = _load_datastore_yaml(yaml_path, normalized)
+    return section.get("report_tz")
+
 
 def _default_datastore_config_path() -> str:
     """Return the path to the bundled default datastore config.
