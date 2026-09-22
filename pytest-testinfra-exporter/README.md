@@ -4,30 +4,40 @@ Backend-pluggable pytest reporting plugin with preserved `pytest-testinfra` host
 
 ## Installation
 
-From the `pytest-testinfra-exporter` directory, install the plugin in editable mode:
+Install the package from PyPI with the driver for your database backend.
+
+For MariaDB:
 
 ```bash
-pip install -e .
+pip install "pytest-testinfra-exporter[mariadb]"
 ```
 
-If you are standing one level above this directory, use:
+For PostgreSQL:
 
 ```bash
-pip install -e ./pytest-testinfra-exporter
+pip install "pytest-testinfra-exporter[postgres]"
 ```
 
-Pytest will auto-discover the plugin through the package's `pytest11` entry point, so no `conftest.py` changes are required.
-
-Install a database driver if you plan to use a backend:
+To install the plugin without a database driver:
 
 ```bash
-pip install -e ".[mariadb]"
+pip install pytest-testinfra-exporter
+```
+
+Pytest auto-discovers the plugin through the package's `pytest11` entry point, so no `conftest.py` changes are required.
+
+### Development installation
+
+From the repository root, install the plugin in editable mode with the required backend extra:
+
+```bash
+pip install -e "./pytest-testinfra-exporter[mariadb]"
 ```
 
 or:
 
 ```bash
-pip install -e ".[postgres]"
+pip install -e "./pytest-testinfra-exporter[postgres]"
 ```
 
 ## Usage
@@ -39,6 +49,22 @@ pytest --storage-report --report-backend=mariadb
 ```
 
 The plugin is loaded automatically during pytest startup.
+
+## Grafana dashboards
+
+[![Grafana executive summary dashboard](https://raw.githubusercontent.com/PhonePe/pytest-testinfra-exporter/main/assets/executive-summary-dashboard.png)](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/assets/executive-summary-dashboard.png)
+
+Ready-made Grafana dashboard JSON files are available for both [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/tree/main/grafana/mariadb) and [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/tree/main/grafana/postgres). They provide executive, run, suite, host, test coverage, and test-log views over the exported results:
+
+- Executive Summary: [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/mariadb/testinfra-executive-summary-dashboard.json) | [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/postgres/testinfra-executive-summary-dashboard.json)
+- Host Overview: [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/mariadb/testinfra-overview-dashboard.json) | [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/postgres/testinfra-overview-dashboard.json)
+- Test Suite Overview: [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/mariadb/testinfra-suite-overview-dashboard.json) | [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/postgres/testinfra-suite-overview-dashboard.json)
+- Suite Test Coverage: [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/mariadb/testinfra-suite-test-coverage-dashboard.json) | [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/postgres/testinfra-suite-test-coverage-dashboard.json)
+- Host Details: [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/mariadb/Host%20View/testinfra-host-dashboard.json) | [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/postgres/Host%20View/testinfra-host-dashboard.json)
+- Test Logs: [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/mariadb/Host%20View/testinfra-test-logs-dashboard.json) | [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/postgres/Host%20View/testinfra-test-logs-dashboard.json)
+- Suite Host Details: [MariaDB](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/mariadb/Test%20Suite%20View/testinfra-suite-host-dashboard.json) | [PostgreSQL](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/postgres/Test%20Suite%20View/testinfra-suite-host-dashboard.json)
+
+Import the JSON files directly in Grafana, or follow the [dashboard import and provisioning guide](https://github.com/PhonePe/pytest-testinfra-exporter/blob/main/grafana/README.md). The dashboards include drill-down links between overview, host, suite, and log views.
 
 ## Overview
 
