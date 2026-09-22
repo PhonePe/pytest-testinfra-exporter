@@ -5,6 +5,11 @@ This folder contains a 3-level drill-down dashboard set, in two flavors:
 - `mariadb/` — MySQL/MariaDB SQL, for `--report-backend mariadb`
 - `postgres/` — PostgreSQL SQL, for `--report-backend postgres`
 
+Dashboard UIDs and titles are suffixed per variant (`-mariadb` / `-pg`, e.g.
+`testinfra-overview-mariadb` and `testinfra-overview-pg`), so both variants
+can be provisioned into the same Grafana instance without collisions. All
+drill-down links stay within their own variant.
+
 Both trees have the same layout and contain a 3-level drill-down dashboard set:
 
 1. Host overview: pass/fail/skipped/error counts for all hosts.

@@ -23,7 +23,7 @@
     {
       "title": "Back to Host Overview",
       "type": "link",
-      "url": "/d/testinfra-overview/testinfra-host-overview?var-ds=${ds}"
+      "url": "/d/testinfra-overview-mariadb/testinfra-host-overview?var-ds=${ds}"
     }
   ],
   "panels": [
@@ -59,7 +59,7 @@
                 "value": [
                   {
                     "title": "Open test logs",
-                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}&var-test_id=${__data.fields[\"test_id\"]}",
+                    "url": "/d/testinfra-test-logs-mariadb/testinfra-test-logs?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}&var-test_id=${__data.fields[\"test_id\"]}",
                     "targetBlank": false
                   }
                 ]
@@ -492,8 +492,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "TestInfra - Host Details",
-  "uid": "testinfra-host-details",
+  "title": "TestInfra - Host Details (MariaDB)",
+  "uid": "testinfra-host-details-mariadb",
   "version": 1,
   "weekStart": ""
 }

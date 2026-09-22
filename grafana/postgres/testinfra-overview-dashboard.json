@@ -50,7 +50,7 @@
                 "value": [
                   {
                     "title": "Open host tests",
-                    "url": "/d/testinfra-host-details/testinfra-host-details?var-ds=${ds}&var-host=${__value.raw}",
+                    "url": "/d/testinfra-host-details-pg/testinfra-host-details?var-ds=${ds}&var-host=${__value.raw}",
                     "targetBlank": false
                   }
                 ]
@@ -360,8 +360,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "TestInfra - Host Overview",
-  "uid": "testinfra-overview",
+  "title": "TestInfra - Host Overview (Postgres)",
+  "uid": "testinfra-overview-pg",
   "version": 4,
   "weekStart": ""
 }
