@@ -28,14 +28,10 @@ jobs:
           pip install build twine
 
       - name: Build package
-        # Scopes the build to the subdirectory where pyproject.toml and the package code live.
-        # This resolves the "." package-dir paths defined in your pyproject.toml.
-        working-directory: pytest-testinfra-exporter
         run: |
           python -m build
 
       - name: Publish to PyPI
-        working-directory: pytest-testinfra-exporter
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PUBLISH_REGISTRY_PASSWORD }}

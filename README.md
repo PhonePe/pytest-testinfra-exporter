@@ -48,10 +48,10 @@ The package also supports PostgreSQL as a storage backend. The bundled Grafana d
 
 ## Where To Go Next
 
-- [pytest-testinfra-exporter/README.md](pytest-testinfra-exporter/README.md) - install the plugin, review CLI options, and see backend examples.
+- [CONTRIBUTING.md](CONTRIBUTING.md) - install the plugin for development and review the validation workflow.
 - [grafana/README.md](grafana/README.md) - import or provision the Grafana dashboards and datasource.
-- [pytest-testinfra-exporter/schema/README.md](pytest-testinfra-exporter/schema/README.md) - apply the database schema and review starter queries.
-- [pytest-testinfra-exporter/docs/usage.rst](pytest-testinfra-exporter/docs/usage.rst) - read the usage guide for more complete command examples.
+- [src/pytest_testinfra_exporter/schema/README.md](src/pytest_testinfra_exporter/schema/README.md) - apply the database schema and review starter queries.
+- [docs/usage.rst](docs/usage.rst) - read the usage guide for complete installation and command examples.
 
 ---
 
