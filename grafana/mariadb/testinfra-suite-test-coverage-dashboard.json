@@ -23,7 +23,7 @@
     {
       "title": "Back to Suite Overview",
       "type": "link",
-      "url": "/d/testinfra-suite-overview/testinfra-suite-overview?var-ds=${ds}"
+      "url": "/d/testinfra-suite-overview-mariadb/testinfra-suite-overview?var-ds=${ds}"
     }
   ],
   "panels": [
@@ -160,7 +160,7 @@
           "refId": "A"
         }
       ],
-      "title": "Passed / Failed / Skipped by Run — ${suite}",
+      "title": "Passed / Failed / Skipped by Run \u2014 ${suite}",
       "type": "barchart"
     },
     {
@@ -377,7 +377,7 @@
                 "value": [
                   {
                     "title": "details",
-                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${__data.fields[\"run_id\"]}&var-host=${__data.fields[\"host_name\"]}&var-test_id=${__data.fields[\"test_id\"]}",
+                    "url": "/d/testinfra-test-logs-mariadb/testinfra-test-logs?var-ds=${ds}&var-run_id=${__data.fields[\"run_id\"]}&var-host=${__data.fields[\"host_name\"]}&var-test_id=${__data.fields[\"test_id\"]}",
                     "targetBlank": false
                   }
                 ]
@@ -666,8 +666,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "TestInfra - Suite Test Coverage",
-  "uid": "testinfra-suite-test-coverage",
+  "title": "TestInfra - Suite Test Coverage (MariaDB)",
+  "uid": "testinfra-suite-test-coverage-mariadb",
   "version": 1,
   "weekStart": ""
 }

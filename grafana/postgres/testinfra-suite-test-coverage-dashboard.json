@@ -23,7 +23,7 @@
     {
       "title": "Back to Suite Overview",
       "type": "link",
-      "url": "/d/testinfra-suite-overview/testinfra-suite-overview?var-ds=${ds}"
+      "url": "/d/testinfra-suite-overview-pg/testinfra-suite-overview?var-ds=${ds}"
     }
   ],
   "panels": [
@@ -377,7 +377,7 @@
                 "value": [
                   {
                     "title": "details",
-                    "url": "/d/testinfra-test-logs/testinfra-test-logs?var-ds=${ds}&var-run_id=${__data.fields[\"run_id\"]}&var-host=${__data.fields[\"host_name\"]}&var-test_id=${__data.fields[\"test_id\"]}",
+                    "url": "/d/testinfra-test-logs-pg/testinfra-test-logs?var-ds=${ds}&var-run_id=${__data.fields[\"run_id\"]}&var-host=${__data.fields[\"host_name\"]}&var-test_id=${__data.fields[\"test_id\"]}",
                     "targetBlank": false
                   }
                 ]
@@ -666,8 +666,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "TestInfra - Suite Test Coverage",
-  "uid": "testinfra-suite-test-coverage",
+  "title": "TestInfra - Suite Test Coverage (Postgres)",
+  "uid": "testinfra-suite-test-coverage-pg",
   "version": 1,
   "weekStart": ""
 }

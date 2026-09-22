@@ -23,12 +23,12 @@
     {
       "title": "Host Overview",
       "type": "link",
-      "url": "/d/testinfra-overview/testinfra-host-overview?var-ds=${ds}"
+      "url": "/d/testinfra-overview-mariadb/testinfra-host-overview?var-ds=${ds}"
     },
     {
       "title": "Suite Overview",
       "type": "link",
-      "url": "/d/testinfra-suite-overview/testinfra-suite-overview?var-ds=${ds}"
+      "url": "/d/testinfra-suite-overview-mariadb/testinfra-suite-overview?var-ds=${ds}"
     }
   ],
   "panels": [
@@ -1012,8 +1012,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "TestInfra - Executive Summary",
-  "uid": "testinfra-executive-summary",
+  "title": "TestInfra - Executive Summary (MariaDB)",
+  "uid": "testinfra-executive-summary-mariadb",
   "version": 1,
   "weekStart": ""
 }

@@ -23,12 +23,12 @@
     {
       "title": "Back to Host Details",
       "type": "link",
-      "url": "/d/testinfra-host-details/testinfra-host-details?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}"
+      "url": "/d/testinfra-host-details-pg/testinfra-host-details?var-ds=${ds}&var-run_id=${run_id}&var-host=${host}"
     },
     {
       "title": "Back to Host Overview",
       "type": "link",
-      "url": "/d/testinfra-overview/testinfra-host-overview?var-ds=${ds}"
+      "url": "/d/testinfra-overview-pg/testinfra-host-overview?var-ds=${ds}"
     }
   ],
   "panels": [
@@ -276,8 +276,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "TestInfra - Test Logs",
-  "uid": "testinfra-test-logs",
+  "title": "TestInfra - Test Logs (Postgres)",
+  "uid": "testinfra-test-logs-pg",
   "version": 2,
   "weekStart": ""
 }

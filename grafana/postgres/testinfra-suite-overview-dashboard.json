@@ -77,7 +77,7 @@
           "links": [
             {
               "title": "Open suite host details",
-              "url": "/d/testinfra-suite-host-details/testinfra-suite-host-details?var-ds=${ds}&var-suite_host=${__field.name}&var-point_time=${__value.time}&from=${__from}&to=${__to}",
+              "url": "/d/testinfra-suite-host-details-pg/testinfra-suite-host-details?var-ds=${ds}&var-suite_host=${__field.name}&var-point_time=${__value.time}&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ]
@@ -175,7 +175,7 @@
           "links": [
             {
               "title": "Open suite host details",
-              "url": "/d/testinfra-suite-host-details/testinfra-suite-host-details?var-ds=${ds}&var-suite_host=${__field.name}&var-point_time=${__value.time}&from=${__from}&to=${__to}",
+              "url": "/d/testinfra-suite-host-details-pg/testinfra-suite-host-details?var-ds=${ds}&var-suite_host=${__field.name}&var-point_time=${__value.time}&from=${__from}&to=${__to}",
               "targetBlank": false
             }
           ]
@@ -355,8 +355,8 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Testinfra - Test suite overview",
-  "uid": "testinfra-suite-overview",
+  "title": "Testinfra - Test suite overview (Postgres)",
+  "uid": "testinfra-suite-overview-pg",
   "version": 1,
   "weekStart": ""
 }
