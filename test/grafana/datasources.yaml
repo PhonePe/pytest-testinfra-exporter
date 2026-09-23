@@ -1,0 +1,38 @@
+apiVersion: 1
+
+datasources:
+  - name: TestInfra MariaDB
+    uid: testinfra-mariadb
+    type: mysql
+    access: proxy
+    url: mariadb:3306
+    user: testinfra_user
+    jsonData:
+      database: testinfra_reports
+      maxOpenConns: 20
+      maxIdleConns: 10
+      connMaxLifetime: 14400
+      tlsAuth: false
+    secureJsonData:
+      password: password
+    isDefault: true
+    editable: true
+
+  - name: TestInfra PostgreSQL
+    uid: testinfra-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: postgres
+    jsonData:
+      database: testinfra_reports
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+      maxOpenConns: 20
+      maxIdleConns: 10
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: password
+    isDefault: false
+    editable: true
