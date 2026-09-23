@@ -1,0 +1,97 @@
+name: pytest-testinfra-exporter-test
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpassword
+      MARIADB_DATABASE: testinfra_reports
+      MARIADB_USER: testinfra_user
+      MARIADB_PASSWORD: password
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - mariadb-data:/var/lib/mysql
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: testinfra_reports
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d testinfra_reports"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  salt-master:
+    build:
+      context: ..
+      dockerfile: test/salt/Dockerfile
+    hostname: salt-master
+    command: ["salt-master", "--log-level=info"]
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f '[s]alt-master' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - ../:/workspace
+      - ./salt/master.conf:/etc/salt/master.d/test.conf:ro
+      - salt-master-pki:/etc/salt/pki/master
+
+  salt-minion:
+    build:
+      context: ..
+      dockerfile: test/salt/Dockerfile
+    hostname: minion
+    command: ["salt-minion", "--log-level=info"]
+    depends_on:
+      salt-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f '[s]alt-minion' >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - ./salt/minion.conf:/etc/salt/minion.d/test.conf:ro
+      - salt-minion-pki:/etc/salt/pki/minion
+
+  grafana:
+    image: grafana/grafana:11.6.5
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards.yaml:/etc/grafana/provisioning/dashboards/testinfra.yaml:ro
+      - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/testinfra.yaml:ro
+      - ../grafana/mariadb:/var/lib/grafana/dashboards/mariadb:ro
+      - ../grafana/postgres:/var/lib/grafana/dashboards/postgres:ro
+
+volumes:
+  mariadb-data:
+  postgres-data:
+  grafana-data:
+  salt-master-pki:
+  salt-minion-pki:

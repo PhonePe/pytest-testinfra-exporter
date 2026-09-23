@@ -7,14 +7,14 @@ Thanks for helping improve `pytest-testinfra-exporter`. This project sits betwee
 Install the plugin in editable mode from the repository root:
 
 ```bash
-pip install -e ./pytest-testinfra-exporter
+pip install -e .
 ```
 
 Install the backend extras you need for local testing:
 
 ```bash
-pip install -e "./pytest-testinfra-exporter[mariadb]"
-pip install -e "./pytest-testinfra-exporter[postgres]"
+pip install -e ".[mariadb]"
+pip install -e ".[postgres]"
 ```
 
 The package supports Python 3.9 and newer.
@@ -29,9 +29,10 @@ The package supports Python 3.9 and newer.
 
 ## Areas Of The Project
 
-- `pytest-testinfra-exporter/` contains the pytest plugin, backend interface, storage adapters, models, schemas, and package documentation.
+- `src/pytest_testinfra_exporter/` contains the pytest plugin, backend interface, storage adapters, models, and bundled runtime resources.
 - `grafana/mariadb/` and `grafana/postgres/` contain importable and provisionable Grafana dashboards for the MariaDB and PostgreSQL backends respectively (see `grafana/README.md`).
-- `pytest-testinfra-exporter/schema/` contains database schema files and schema usage notes.
+- `src/pytest_testinfra_exporter/schema/` contains database schema files and schema usage notes.
+- `docs/` contains the Sphinx package documentation.
 
 For more detail, start with the root [README.md](README.md), then follow the README inside the area you are changing.
 

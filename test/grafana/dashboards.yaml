@@ -1,0 +1,19 @@
+apiVersion: 1
+
+providers:
+  - name: Testinfra MariaDB
+    folder: Testinfra MariaDB
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards/mariadb
+  - name: Testinfra PostgreSQL
+    folder: Testinfra PostgreSQL
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards/postgres

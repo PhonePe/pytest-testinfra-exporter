@@ -42,14 +42,10 @@ postgres = ["psycopg2-binary>=2.9"]
 
 [tool.setuptools]
 include-package-data = true
-packages = [
-    "pytest_testinfra_exporter",
-    "pytest_testinfra_exporter.backends",
-]
+package-dir = { "" = "src" }
 
-[tool.setuptools.package-dir]
-pytest_testinfra_exporter = "."
-"pytest_testinfra_exporter.backends" = "backends"
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.setuptools.package-data]
 pytest_testinfra_exporter = [
