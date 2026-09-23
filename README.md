@@ -38,6 +38,8 @@ pytest tests/ \
 
 The package also supports PostgreSQL as a storage backend. The bundled Grafana dashboards are currently built around the MariaDB/MySQL datasource flow.
 
+Test changes locally with `docker compose -f test/compose.yaml up -d --build`; see the [`test/` directory](test/README.md) for the complete testing workflow.
+
 ## What's Included
 
 - A pytest plugin that records testinfra results without requiring `conftest.py` changes.
