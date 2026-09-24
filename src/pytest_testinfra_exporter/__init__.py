@@ -21,6 +21,6 @@ registration step.
 
 from .plugin import pytest_addoption, pytest_configure
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = ["__version__", "pytest_addoption", "pytest_configure"]

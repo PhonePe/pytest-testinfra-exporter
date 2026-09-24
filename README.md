@@ -15,7 +15,8 @@ This project is a lightweight reporting path for infrastructure tests: run your 
 - Drill from a run overview into a host, a test, and the captured failure output.
 - Preserve important pytest and testinfra contexts such as hostname, connection backend, markers and more. 
 - Dynamically tag common failure patterns so recurring issues are easier to spot.
-- Store results in MariaDB or PostgreSQL through a backend-pluggable pytest reporter.
+- Store results in MariaDB or PostgreSQL through SQLAlchemy Core adapters.
+- Apply non-destructive, version-controlled schema upgrades with bundled Alembic migrations.
 
 ## How It Works
 
@@ -33,8 +34,69 @@ A reporting run looks like this:
 ```bash
 pytest tests/ \
   --storage-report \
+  --storage-migrate \
   --report-backend mariadb
 ```
+
+## Database Migrations
+
+`--storage-migrate` runs the bundled Alembic migrations against the selected
+database before results are written. It creates the reporting tables in an
+empty database or upgrades an already versioned database to the latest schema.
+Migrations are non-destructive: they do not drop the reporting tables or erase
+test history.
+
+The flag does not need to be specified on every pytest run. Once the database
+is at the latest revision, a normal reporting run can omit it:
+
+```bash
+pytest tests/ \
+  --storage-report \
+  --report-backend mariadb
+```
+
+Including `--storage-migrate` on every run is also safe. Alembic checks the
+current database revision and performs no schema changes when it is already at
+`head`. This is convenient for CI and disposable environments, although it adds
+a migration lock and revision check at startup.
+
+For controlled environments, apply migrations once as part of deployment:
+
+```bash
+pytest --collect-only \
+  --storage-migrate \
+  --report-backend mariadb \
+  --datastore-config datastore.yaml
+```
+
+Subsequent test runs can then use `--storage-report` without
+`--storage-migrate`.
+
+### Existing Databases From Version 0.4.x or Earlier
+
+Databases created by version 0.4.x or earlier have the reporting tables but no
+Alembic version record. Back up the database and perform a one-time verified
+adoption:
+
+```bash
+pytest --collect-only \
+  --storage-migrate \
+  --storage-adopt-existing \
+  --report-backend mariadb \
+  --datastore-config datastore.yaml
+```
+
+The plugin validates the legacy tables, columns, keys, relationships, and
+required indexes before recording the baseline revision. Use
+`--storage-adopt-existing` only for this first adoption; it is not needed for
+routine runs after the database is versioned.
+
+| Situation | Required migration flags |
+| --- | --- |
+| New empty database | `--storage-migrate` |
+| Existing database from version 0.4.x or earlier | `--storage-migrate --storage-adopt-existing` once |
+| Already migrated database | No migration flag required |
+| Automatically ensure the latest schema on every run | `--storage-migrate` |
 
 The package also supports PostgreSQL as a storage backend. The bundled Grafana dashboards are currently built around the MariaDB/MySQL datasource flow.
 
@@ -44,7 +106,7 @@ Test changes locally with `docker compose -f test/compose.yaml up -d --build`; s
 
 - A pytest plugin that records testinfra results without requiring `conftest.py` changes.
 - MariaDB and PostgreSQL storage backends.
-- Database schema files for stored test runs, hosts, tests, results, logs, and failure metadata.
+- Alembic migrations for stored test runs, hosts, tests, results, logs, and failure metadata.
 - Grafana dashboards for run, suite, host, and test-log views.
 - Failure-mapping rules for classifying common failure output.
 
@@ -52,7 +114,7 @@ Test changes locally with `docker compose -f test/compose.yaml up -d --build`; s
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) - install the plugin for development and review the validation workflow.
 - [grafana/README.md](grafana/README.md) - import or provision the Grafana dashboards and datasource.
-- [src/pytest_testinfra_exporter/schema/README.md](src/pytest_testinfra_exporter/schema/README.md) - apply the database schema and review starter queries.
+- [src/pytest_testinfra_exporter/schema/README.md](src/pytest_testinfra_exporter/schema/README.md) - migrate new databases or adopt a pre-Alembic schema.
 - [docs/usage.rst](docs/usage.rst) - read the usage guide for complete installation and command examples.
 
 ---

@@ -321,7 +321,7 @@ def pytest_addoption(parser):
     :param parser: Pytest parser object.
     """
 
-    group = parser.getgroup("mariadb-reporting")
+    group = parser.getgroup("testinfra-storage-reporting")
     group.addoption(
         "--storage-report",
         action="store_true",
@@ -361,6 +361,30 @@ def pytest_addoption(parser):
         default=None,
         help="Optional human-readable name for the test run. Defaults to run start datetime.",
     )
+    group.addoption(
+        "--suite-version",
+        action="store",
+        default=None,
+        help="Optional backend-neutral suite version or git SHA.",
+    )
+    group.addoption(
+        "--storage-migrate",
+        action="store_true",
+        default=False,
+        help="Upgrade the selected backend schema using bundled Alembic migrations.",
+    )
+    group.addoption(
+        "--storage-migration-revision",
+        action="store",
+        default="head",
+        help="Alembic revision to upgrade to (default: head).",
+    )
+    group.addoption(
+        "--storage-adopt-existing",
+        action="store_true",
+        default=False,
+        help="Verify and adopt a complete pre-Alembic reporter schema before upgrading.",
+    )
     group.addoption("--mariadb-host", action="store", default=None)
     group.addoption("--mariadb-port", action="store", type=int, default=None)
     group.addoption("--mariadb-user", action="store", default=None)
@@ -370,13 +394,13 @@ def pytest_addoption(parser):
         "--mariadb-suite-version",
         action="store",
         default=None,
-        help="Optional suite version or git SHA.",
+        help="Deprecated alias for --suite-version.",
     )
     group.addoption(
         "--mariadb-init-schema",
         action="store_true",
         default=False,
-        help="Create/update required MariaDB schema before sending reports.",
+        help="Deprecated non-destructive alias for --storage-migrate.",
     )
     group.addoption(
         "--failure-map",
@@ -394,7 +418,7 @@ def pytest_addoption(parser):
         "--postgres-init-schema",
         action="store_true",
         default=False,
-        help="Create/update required PostgreSQL schema before sending reports.",
+        help="Deprecated non-destructive alias for --storage-migrate.",
     )
 
 
@@ -558,6 +582,14 @@ class TestinfraStorageReporter:
 
         self.config = config
         self.enabled = bool(config.getoption("--storage-report"))
+        self._legacy_migration_flag = bool(
+            config.getoption("--mariadb-init-schema")
+            or config.getoption("--postgres-init-schema")
+        )
+        self._migration_requested = bool(
+            config.getoption("--storage-migrate") or self._legacy_migration_flag
+        )
+        self._migration_result = None
         self._failure_tagger = config.pluginmanager.get_plugin("failure-tagger")
         self._disabled_reason = None
         self._backend_name = config.getoption("--report-backend")
@@ -711,7 +743,7 @@ class TestinfraStorageReporter:
         :param session: Pytest session.
         """
 
-        if not self.enabled:
+        if not self.enabled and not self._migration_requested:
             return
 
         try:
@@ -722,14 +754,46 @@ class TestinfraStorageReporter:
 
         self._backend.initialize(self.config)
         if hasattr(self._backend, "enabled") and not getattr(self._backend, "enabled"):
-            self._disable(getattr(self._backend, "disabled_reason", "backend disabled"))
+            reason = getattr(self._backend, "disabled_reason", "backend disabled")
+            self._disable(reason)
+            if self._migration_requested:
+                raise pytest.UsageError("Storage schema migration failed: %s" % reason)
             return
+
+        if self._migration_requested:
+            if self._legacy_migration_flag:
+                warnings.warn(
+                    "--mariadb-init-schema and --postgres-init-schema are deprecated; "
+                    "use --storage-migrate. These flags no longer drop existing data.",
+                    DeprecationWarning,
+                )
+            try:
+                self._migration_result = self._backend.migrate(
+                    revision=self.config.getoption("--storage-migration-revision"),
+                    adopt_existing=bool(self.config.getoption("--storage-adopt-existing")),
+                )
+            except Exception as exc:
+                self._backend.close()
+                raise pytest.UsageError("Storage schema migration failed: %s" % exc) from exc
+
+        if not self.enabled:
+            self._backend.close()
+            return
+
+        suite_version = self.config.getoption("--suite-version")
+        legacy_suite_version = self.config.getoption("--mariadb-suite-version")
+        if suite_version is None and legacy_suite_version is not None:
+            warnings.warn(
+                "--mariadb-suite-version is deprecated; use --suite-version.",
+                DeprecationWarning,
+            )
+            suite_version = legacy_suite_version
 
         run_summary = TestRunSummary(
             run_id=self._run_id,
             run_name=self._run_name,
             trigger_source=socket.getfqdn(),
-            suite_version=self.config.getoption("--mariadb-suite-version"),
+            suite_version=suite_version,
             started_at=self._run_started_at,
         )
         self._backend.session_start(run_summary)
@@ -936,7 +1000,7 @@ class TestinfraStorageReporter:
         :param config: Pytest config.
         """
 
-        if not config.getoption("--storage-report"):
+        if not config.getoption("--storage-report") and not self._migration_requested:
             return
 
         terminalreporter.write_sep("-", "Storage reporter")
@@ -945,6 +1009,14 @@ class TestinfraStorageReporter:
         terminalreporter.write_line("run_id: %s" % self._run_id)
         terminalreporter.write_line("run_name: %s" % self._run_name)
         terminalreporter.write_line("results_buffered: %d" % len(self._result_rows))
+        if self._migration_result is not None:
+            terminalreporter.write_line(
+                "migration_revision: %s" % self._migration_result.current_revision
+            )
+            terminalreporter.write_line(
+                "legacy_schema_adopted: %s"
+                % ("yes" if self._migration_result.adopted_existing else "no")
+            )
         if self._failure_tagger is not None:
             terminalreporter.write_line(
                 "failure_tagger_enabled: %s" % ("yes" if self._failure_tagger.enabled else "no")

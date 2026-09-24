@@ -52,7 +52,7 @@ pytest -c /workspace/test/tests/pytest.ini /workspace/test/tests -v \
   --mariadb-user=testinfra_user \
   --mariadb-password=password \
   --mariadb-database=testinfra_reports \
-  --mariadb-init-schema \
+  --storage-migrate \
   --run-name="manual MariaDB test"
 ```
 
@@ -67,14 +67,16 @@ pytest -c /workspace/test/tests/pytest.ini /workspace/test/tests -v \
   --postgres-user=postgres \
   --postgres-password=password \
   --postgres-database=testinfra_reports \
-  --postgres-init-schema \
+  --storage-migrate \
   --run-name="manual PostgreSQL test"
 ```
 
-`--mariadb-init-schema` and `--postgres-init-schema` drop and recreate the
-reporting tables. Use these options for the first run or when intentionally
-resetting that backend. Omit the relevant option to retain test history on
-subsequent runs.
+`--storage-migrate` applies non-destructive Alembic upgrades and is safe to use
+on subsequent runs. For a database populated by version 0.4.x or earlier, back it up and
+add `--storage-adopt-existing` once; the plugin validates the legacy schema
+before recording the baseline revision. The old backend-specific init flags
+are deprecated aliases and no longer reset data. To deliberately reset this
+local environment, use `docker compose -f test/compose.yaml down --volumes`.
 
 The pytest output should contain a `Storage reporter` section with
 `enabled: yes`, the selected backend, and the number of buffered results.
@@ -149,8 +151,8 @@ cd /tmp
 
 Running from `/tmp` is intentional: it prevents the repository source tree
 from shadowing the package installed in the virtual environment. These runs
-also exercise the SQL schemas, datastore defaults, and failure map packaged
-inside the wheel.
+also exercise the Alembic migrations, datastore defaults, and failure map
+packaged inside the wheel.
 
 To additionally prove the sdist can produce a wheel, use a separate output
 directory:
