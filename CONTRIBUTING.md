@@ -31,7 +31,7 @@ The package supports Python 3.9 and newer.
 
 - `src/pytest_testinfra_exporter/` contains the pytest plugin, backend interface, storage adapters, models, and bundled runtime resources.
 - `grafana/mariadb/` and `grafana/postgres/` contain importable and provisionable Grafana dashboards for the MariaDB and PostgreSQL backends respectively (see `grafana/README.md`).
-- `src/pytest_testinfra_exporter/schema/` contains database schema files and schema usage notes.
+- `src/pytest_testinfra_exporter/database.py` defines shared SQLAlchemy metadata; `src/pytest_testinfra_exporter/alembic/` contains immutable schema revisions.
 - `docs/` contains the Sphinx package documentation.
 
 For more detail, start with the root [README.md](README.md), then follow the README inside the area you are changing.
@@ -41,7 +41,9 @@ For more detail, start with the root [README.md](README.md), then follow the REA
 Before opening a pull request, run the checks that match your change:
 
 - For plugin changes, run a representative `pytest` command with `--storage-report` and the backend you changed.
-- For MariaDB or PostgreSQL changes, apply the matching schema and confirm a reporting run writes results successfully.
+- For MariaDB or PostgreSQL changes, migrate an empty database, adopt a compatible legacy database, and confirm a reporting run writes results successfully.
+- Never edit a released Alembic revision; add a new revision and test upgrades from the prior revision.
+- Build a wheel and verify the bundled Alembic revisions work outside the source checkout.
 - For Grafana changes, import or provision the affected dashboard and confirm drill-down links, variables, and panels still work.
 - For documentation changes, verify links point to existing files and examples use current CLI flags.
 
@@ -50,6 +52,7 @@ A minimal reporting run looks like this:
 ```bash
 pytest tests/ \
   --storage-report \
+  --storage-migrate \
   --report-backend mariadb
 ```
 

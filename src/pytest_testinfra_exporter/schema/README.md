@@ -1,11 +1,11 @@
-# MariaDB Reporting Schema and Pytest Plugin
+# Database Schema Migrations
 
-This document explains how to reset/apply the MariaDB schema and publish pytest results for Grafana drill-down dashboards.
+The reporting schema is managed by bundled, version-controlled Alembic
+migrations. MariaDB and PostgreSQL use the same SQLAlchemy Core metadata while
+retaining the physical types required by each database.
 
-## Files
-
-- Schema: [db.sql](db.sql)
-- Pytest plugin: [../plugin.py](../plugin.py)
+The old `mariadb.sql` and `postgres.sql` reset scripts are no longer schema
+authorities. In particular, schema setup no longer drops reporting history.
 
 ## What gets stored
 
@@ -16,23 +16,50 @@ This document explains how to reset/apply the MariaDB schema and publish pytest 
 - Test timestamps and duration
 - Logs and traceback (`captured_log`, `captured_stdout`, `captured_stderr`, `longrepr`)
 
-## Quick reset and apply schema
+## New Database
 
-`db.sql` now includes DROP statements at the top, so each run can recreate schema from scratch.
-
-Example:
+For an empty database, run the migrations before or together with the first
+reporting run:
 
 ```bash
-mysql -h 127.0.0.1 -P 3306 -u root -proot -e "CREATE DATABASE IF NOT EXISTS testinfra_reports CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-mysql -h 127.0.0.1 -P 3306 -u root -proot testinfra_reports < db.sql
+pytest tests/ --storage-report --storage-migrate --report-backend mariadb
 ```
+
+Use `--report-backend postgres` for PostgreSQL. Connection settings can be
+provided by `--datastore-config` or the backend-specific CLI options.
+
+Migration-only operation is also supported:
+
+```bash
+pytest --storage-migrate --report-backend mariadb
+```
+
+## Existing Pre-Alembic Database
+
+Databases created by version 0.4.x and earlier contain the five reporting tables but no
+Alembic version record. Back up the database, then perform the one-time verified
+adoption:
+
+```bash
+pytest --storage-migrate --storage-adopt-existing --report-backend mariadb
+```
+
+The plugin verifies the complete table set, columns, primary keys, unique
+constraints, foreign keys, and required indexes before stamping the baseline.
+Partial or incompatible schemas are rejected without dropping or modifying
+their reporting tables. After adoption, normal runs need only
+`--storage-migrate` when schema upgrades should be applied.
+
+`--mariadb-init-schema` and `--postgres-init-schema` remain temporarily as
+deprecated aliases for `--storage-migrate`. They are now non-destructive and do
+not implicitly adopt an existing unversioned schema.
 
 ## Pytest publishing run
 
-Install dependency:
+Install the matching backend extra:
 
 ```bash
-pip install PyMySQL
+pip install "pytest-testinfra-exporter[mariadb]"
 ```
 
 Run tests and publish:
@@ -47,9 +74,8 @@ pytest infra/test_monitoring.py \
   --mariadb-database testinfra_reports \
   --run-name "manual-run" \
   --failure-map ../failure_mapper/failure_map.yaml \
-  --mariadb-trigger-source local \
-  --mariadb-suite-version "manual-run" \
-  --mariadb-init-schema
+  --suite-version "manual-run" \
+  --storage-migrate
 ```
 
 ## Grafana drill-down starter queries
